@@ -8,6 +8,9 @@ namespace HomeBudget.Domain.Shared;
 /// <param name="Value">The underlying Guid value.</param>
 public sealed record BudgetCategoryId(Guid Value) : IStronglyTypedId<Guid>
 {
+    /// <summary>
+    /// Gets the underlying Guid value.
+    /// </summary>
     public Guid Value { get; } = Value == Guid.Empty
         ? throw new ArgumentException("Budget category id cannot be empty.", nameof(Value))
         : Value;

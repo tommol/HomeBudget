@@ -7,5 +7,8 @@ namespace HomeBudget.Domain.Kernel;
 public interface IStronglyTypedId<out TValue>
     where TValue : notnull
 {
+    /// <summary>
+    /// Gets the underlying identifier value.
+    /// </summary>
     TValue Value { get; }
 }

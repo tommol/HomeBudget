@@ -23,6 +23,10 @@ public abstract class AggregateRoot<TId> : Entity<TId>
     /// </summary>
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
+    /// <summary>
+    /// Adds a domain event to the aggregate root.
+    /// </summary>
+    /// <param name="domainEvent">The domain event to add.</param>
     protected void RaiseDomainEvent(IDomainEvent domainEvent)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);

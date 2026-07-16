@@ -39,13 +39,35 @@ public sealed class Currency : ValueObject
         Code = code;
     }
 
-
+    /// <summary>
+    /// Gets the Polish zloty currency.
+    /// </summary>
     public static Currency PLN => new("PLN");
+
+    /// <summary>
+    /// Gets the euro currency.
+    /// </summary>
     public static Currency EUR => new("EUR");
+
+    /// <summary>
+    /// Gets the United States dollar currency.
+    /// </summary>
     public static Currency USD => new("USD");
+
+    /// <summary>
+    /// Gets the Swiss franc currency.
+    /// </summary>
     public static Currency CHF => new("CHF");
+
+    /// <summary>
+    /// Gets the pound sterling currency.
+    /// </summary>
     public static Currency GBP => new("GBP");
 
+    /// <summary>
+    /// Gets the component values used to determine currency equality.
+    /// </summary>
+    /// <returns>The currency code.</returns>
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Code;

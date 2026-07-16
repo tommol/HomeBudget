@@ -20,8 +20,8 @@ public sealed class Money : ValueObject
     /// <summary>
     /// Initializes a new instance of the <see cref="Money"/> class with the specified amount and currency.
     /// </summary>
-    /// <param name="amount"></param>
-    /// <param name="currency"></param>
+    /// <param name="amount">The monetary amount.</param>
+    /// <param name="currency">The currency of the monetary amount.</param>
     public Money(decimal amount, Currency currency)
     {
         ArgumentNullException.ThrowIfNull(currency);
@@ -102,6 +102,10 @@ public sealed class Money : ValueObject
         return new Money(money.Amount / divisor, money.Currency);
     }
 
+    /// <summary>
+    /// Gets the component values used to determine money equality.
+    /// </summary>
+    /// <returns>The amount and currency of the money value.</returns>
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Amount;

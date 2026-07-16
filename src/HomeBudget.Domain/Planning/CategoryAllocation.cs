@@ -3,6 +3,9 @@ using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Domain.Planning;
 
+/// <summary>
+/// Represents an amount allocated to an expense category in a budget plan.
+/// </summary>
 public sealed class CategoryAllocation : Entity<CategoryAllocationId>
 {
     internal CategoryAllocation(
@@ -19,10 +22,29 @@ public sealed class CategoryAllocation : Entity<CategoryAllocationId>
         Flexibility = EnsureDefined(flexibility);
     }
 
+    /// <summary>
+    /// Gets the identifier of the allocated expense category.
+    /// </summary>
     public BudgetCategoryId CategoryId { get; private set; }
+
+    /// <summary>
+    /// Gets the allocated amount.
+    /// </summary>
     public Money Amount { get; private set; }
+
+    /// <summary>
+    /// Gets the flexibility level of the allocation.
+    /// </summary>
     public CategoryAllocationFlexibility Flexibility { get; private set; }
+
+    /// <summary>
+    /// Gets the allocation share of total allocated expenses.
+    /// </summary>
     public decimal ExpenseSharePercentage { get; private set; }
+
+    /// <summary>
+    /// Gets the allocation share of total planned income.
+    /// </summary>
     public decimal IncomeSharePercentage { get; private set; }
 
     internal void ChangeAmount(Money amount)

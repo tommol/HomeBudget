@@ -6,4 +6,4 @@ Docelowo tutaj powinny trafić serwisy aplikacyjne, walidacje, porty/interfejsy 
 
 Ten projekt może zależeć od `HomeBudget.Domain` i `HomeBudget.Contracts`, ale nie powinien zależeć od EF Core, PostgreSQL, Blazora ani ASP.NET Core.
 
-Na tym etapie projekt pozostaje pusty od strony klas.
+Na tym etapie projekt zawiera bazowe abstrakcje CQRS dla komend, zapytań i ich handlerów.

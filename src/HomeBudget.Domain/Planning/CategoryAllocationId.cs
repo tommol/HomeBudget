@@ -8,6 +8,9 @@ namespace HomeBudget.Domain.Planning;
 /// <param name="Value">The underlying Guid value.</param>
 public sealed record CategoryAllocationId(Guid Value) : IStronglyTypedId<Guid>
 {
+    /// <summary>
+    /// Gets the underlying Guid value.
+    /// </summary>
     public Guid Value { get; } = Value == Guid.Empty
         ? throw new ArgumentException("Category allocation id cannot be empty.", nameof(Value))
         : Value;

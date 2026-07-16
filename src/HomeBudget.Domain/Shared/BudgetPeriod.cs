@@ -32,7 +32,7 @@ public sealed class BudgetPeriod : ValueObject
     /// </summary>
     /// <param name="year">The year of the budget period.</param>
     /// <param name="month">The month of the budget period.</param>
-    /// <exception cref="ArgumentOutOfRangeException"></exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="month"/> is outside the 1-12 range.</exception>
     public BudgetPeriod(int year, int month)
     {
         if (month is < 1 or > 12)
@@ -46,6 +46,10 @@ public sealed class BudgetPeriod : ValueObject
         EndDate = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
     }
 
+    /// <summary>
+    /// Gets the component values used to determine budget period equality.
+    /// </summary>
+    /// <returns>The year and month of the budget period.</returns>
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Year;

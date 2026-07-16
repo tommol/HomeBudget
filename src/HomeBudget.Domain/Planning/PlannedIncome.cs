@@ -3,6 +3,9 @@ using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Domain.Planning;
 
+/// <summary>
+/// Represents an expected income entry in a budget plan.
+/// </summary>
 public sealed class PlannedIncome : Entity<PlannedIncomeId>
 {
     private const int MaxTitleLength = 100;
@@ -51,11 +54,34 @@ public sealed class PlannedIncome : Entity<PlannedIncomeId>
         ConversionDate = conversionDate;
     }
 
+    /// <summary>
+    /// Gets the identifier of the income category.
+    /// </summary>
     public BudgetCategoryId CategoryId { get; private set; }
+
+    /// <summary>
+    /// Gets the title of the planned income.
+    /// </summary>
     public string Title { get; private set; }
+
+    /// <summary>
+    /// Gets the original planned income amount.
+    /// </summary>
     public Money Amount { get; private set; }
+
+    /// <summary>
+    /// Gets the date when the income is expected.
+    /// </summary>
     public DateOnly ExpectedDate { get; private set; }
+
+    /// <summary>
+    /// Gets the planned income amount converted to the budget plan default currency.
+    /// </summary>
     public Money? ConvertedAmount { get; private set; }
+
+    /// <summary>
+    /// Gets the date of the currency conversion.
+    /// </summary>
     public DateOnly? ConversionDate { get; private set; }
 
     private static string NormalizeTitle(string title)

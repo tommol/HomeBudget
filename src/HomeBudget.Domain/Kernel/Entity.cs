@@ -7,6 +7,11 @@ namespace HomeBudget.Domain.Kernel;
 public abstract class Entity<TId> : IEquatable<Entity<TId>>
     where TId : notnull
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Entity{TId}"/> class.
+    /// </summary>
+    /// <param name="id">The identifier of the entity.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is the default value.</exception>
     protected Entity(TId id)
     {
         if (EqualityComparer<TId>.Default.Equals(id, default!))
@@ -80,7 +85,6 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
     /// <seealso cref="Equals(Entity{TId})"/>
     /// <seealso cref="Equals(object)"/>
     /// <seealso cref="GetHashCode()"/>
-    /// <seealso cref="!=(Entity{TId}, Entity{TId})"
     public static bool operator ==(Entity<TId>? left, Entity<TId>? right)
         => left?.Equals(right) ?? right is null;
 
@@ -108,7 +112,6 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
     /// <seealso cref="Equals(Entity{TId})"/>
     /// <seealso cref="Equals(object)"/>
     /// <seealso cref="GetHashCode()"/>
-    /// <seealso cref="==(Entity{TId}, Entity{TId})"/>
     public static bool operator !=(Entity<TId>? left, Entity<TId>? right)
         => !(left == right);
 }

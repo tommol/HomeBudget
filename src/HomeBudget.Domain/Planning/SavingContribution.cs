@@ -3,6 +3,9 @@ using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Domain.Planning;
 
+/// <summary>
+/// Represents an amount assigned to a saving category in a budget plan.
+/// </summary>
 public sealed class SavingContribution : Entity<SavingContributionId>
 {
     internal SavingContribution(
@@ -17,7 +20,14 @@ public sealed class SavingContribution : Entity<SavingContributionId>
         Amount = EnsurePositiveAmount(amount);
     }
 
+    /// <summary>
+    /// Gets the identifier of the saving category.
+    /// </summary>
     public BudgetCategoryId CategoryId { get; private set; }
+
+    /// <summary>
+    /// Gets the saving contribution amount.
+    /// </summary>
     public Money Amount { get; private set; }
 
     internal void ChangeAmount(Money amount)

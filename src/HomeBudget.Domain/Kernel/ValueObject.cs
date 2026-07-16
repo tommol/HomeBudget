@@ -64,9 +64,13 @@ public abstract class ValueObject : IEquatable<ValueObject>
     /// </summary>
     /// <param name="left">The first value object to compare.</param>
     /// <param name="right">The second value object to compare.</param>
-    /// <returns>true if the specified value objects are not equal; otherwise, false.</returns
+    /// <returns>true if the specified value objects are not equal; otherwise, false.</returns>
     public static bool operator !=(ValueObject? left, ValueObject? right)
         => !(left == right);
 
+    /// <summary>
+    /// Gets the component values used to determine value object equality.
+    /// </summary>
+    /// <returns>The values that define equality for the value object.</returns>
     protected abstract IEnumerable<object?> GetEqualityComponents();
 }

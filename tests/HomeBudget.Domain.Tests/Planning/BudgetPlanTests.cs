@@ -798,6 +798,33 @@ public sealed class BudgetPlanTests
     }
 
     [Fact]
+    public void RemoveExpenseCategoryAllocation_RemovesAllocationAndRecalculatesRisk()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        AddIncome(budgetPlan, 1000m);
+        AddAllocation(budgetPlan, 500m, CategoryAllocationFlexibility.Fixed);
+        var allocation = AddAllocation(budgetPlan, 600m, CategoryAllocationFlexibility.Optional);
+        Assert.Equal(BudgetFitRisk.OptionalOverrun, budgetPlan.BudgetFitRisk);
+
+        budgetPlan.RemoveExpenseCategoryAllocation(allocation.Id);
+
+        Assert.DoesNotContain(allocation, budgetPlan.ExpenseCategoryAllocations);
+        Assert.Equal(new Money(500m, Currency.PLN), budgetPlan.TotalAllocatedExpenses);
+        Assert.Equal(new Money(500m, Currency.PLN), budgetPlan.PlannedFinancialResult);
+        Assert.Equal(BudgetFitRisk.Balanced, budgetPlan.BudgetFitRisk);
+    }
+
+    [Fact]
+    public void RemoveExpenseCategoryAllocation_Throws_WhenAllocationIsFixed()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        var allocation = AddAllocation(budgetPlan, 500m, CategoryAllocationFlexibility.Fixed);
+
+        Assert.Throws<InvalidOperationException>(() => budgetPlan.RemoveExpenseCategoryAllocation(allocation.Id));
+        Assert.Contains(allocation, budgetPlan.ExpenseCategoryAllocations);
+    }
+
+    [Fact]
     public void ChangeSavingContributionAmount_ChangesAmountAndRecalculatesRisk()
     {
         var budgetPlan = CreateBudgetPlan();
@@ -823,6 +850,23 @@ public sealed class BudgetPlanTests
         Assert.Throws<ArgumentException>(() => budgetPlan.ChangeSavingContributionAmount(
             contribution.Id,
             new Money(1000m, Currency.EUR)));
+    }
+
+    [Fact]
+    public void RemoveSavingContribution_RemovesContributionAndRecalculatesRisk()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        AddIncome(budgetPlan, 5000m);
+        AddAllocation(budgetPlan, 4000m, CategoryAllocationFlexibility.Fixed);
+        var contribution = AddSavingContribution(budgetPlan, 1500m);
+        Assert.Equal(BudgetFitRisk.OptionalOverrun, budgetPlan.BudgetFitRisk);
+
+        budgetPlan.RemoveSavingContribution(contribution.Id);
+
+        Assert.DoesNotContain(contribution, budgetPlan.SavingContributions);
+        Assert.Equal(Money.Zero(Currency.PLN), budgetPlan.TotalSavingContributions);
+        Assert.Equal(new Money(1000m, Currency.PLN), budgetPlan.PlannedFinancialResult);
+        Assert.Equal(BudgetFitRisk.Balanced, budgetPlan.BudgetFitRisk);
     }
 
     [Fact]
@@ -985,6 +1029,95 @@ public sealed class BudgetPlanTests
         budgetPlan.Close();
 
         Assert.Throws<InvalidOperationException>(budgetPlan.Close);
+    }
+
+    [Fact]
+    public void CopyTo_CopiesPlanItemsToTargetPeriod()
+    {
+        var budgetPlan = new BudgetPlan(
+            new BudgetPlanId(Guid.NewGuid()),
+            new OwnerId(Guid.NewGuid()),
+            new BudgetPeriod(2026, 1),
+            Currency.PLN);
+        var income = budgetPlan.AddPlannedIncome(
+            new PlannedIncomeId(Guid.NewGuid()),
+            CreateIncomeCategory(budgetPlan.OwnerId),
+            "Salary",
+            new Money(5000m, Currency.PLN),
+            new DateOnly(2026, 1, 31));
+        var allocation = budgetPlan.AddExpenseCategoryAllocation(
+            new CategoryAllocationId(Guid.NewGuid()),
+            CreateExpenseCategory(budgetPlan.OwnerId),
+            new Money(3000m, Currency.PLN),
+            CategoryAllocationFlexibility.Fixed);
+        var contribution = budgetPlan.AddSavingContribution(
+            new SavingContributionId(Guid.NewGuid()),
+            CreateSavingCategory(budgetPlan.OwnerId),
+            new Money(500m, Currency.PLN));
+        budgetPlan.Activate();
+
+        var copy = budgetPlan.CopyTo(
+            new BudgetPlanId(Guid.NewGuid()),
+            new BudgetPeriod(2026, 2),
+            () => new PlannedIncomeId(Guid.NewGuid()),
+            () => new CategoryAllocationId(Guid.NewGuid()),
+            () => new SavingContributionId(Guid.NewGuid()));
+
+        Assert.NotEqual(budgetPlan.Id, copy.Id);
+        Assert.Equal(budgetPlan.OwnerId, copy.OwnerId);
+        Assert.Equal(new BudgetPeriod(2026, 2), copy.Period);
+        Assert.Equal(budgetPlan.DefaultCurrency, copy.DefaultCurrency);
+        Assert.Equal(BudgetPlanStatus.Draft, copy.Status);
+        Assert.Equal(new Money(5000m, Currency.PLN), copy.TotalPlannedIncome);
+        Assert.Equal(new Money(3000m, Currency.PLN), copy.TotalAllocatedExpenses);
+        Assert.Equal(new Money(500m, Currency.PLN), copy.TotalSavingContributions);
+        Assert.Equal(new Money(1500m, Currency.PLN), copy.PlannedFinancialResult);
+        Assert.Equal(BudgetFitRisk.Balanced, copy.BudgetFitRisk);
+
+        var copiedIncome = Assert.Single(copy.PlannedIncomes);
+        Assert.NotEqual(income.Id, copiedIncome.Id);
+        Assert.Equal(income.CategoryId, copiedIncome.CategoryId);
+        Assert.Equal(income.Title, copiedIncome.Title);
+        Assert.Equal(income.Amount, copiedIncome.Amount);
+        Assert.Equal(new DateOnly(2026, 2, 28), copiedIncome.ExpectedDate);
+
+        var copiedAllocation = Assert.Single(copy.ExpenseCategoryAllocations);
+        Assert.NotEqual(allocation.Id, copiedAllocation.Id);
+        Assert.Equal(allocation.CategoryId, copiedAllocation.CategoryId);
+        Assert.Equal(allocation.Amount, copiedAllocation.Amount);
+        Assert.Equal(allocation.Flexibility, copiedAllocation.Flexibility);
+
+        var copiedContribution = Assert.Single(copy.SavingContributions);
+        Assert.NotEqual(contribution.Id, copiedContribution.Id);
+        Assert.Equal(contribution.CategoryId, copiedContribution.CategoryId);
+        Assert.Equal(contribution.Amount, copiedContribution.Amount);
+    }
+
+    [Fact]
+    public void CopyTo_SkipsDisabledSections()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        AddIncome(budgetPlan, 5000m);
+        AddAllocation(budgetPlan, 3000m, CategoryAllocationFlexibility.Fixed);
+        AddSavingContribution(budgetPlan, 500m);
+
+        var copy = budgetPlan.CopyTo(
+            new BudgetPlanId(Guid.NewGuid()),
+            new BudgetPeriod(2026, 8),
+            () => new PlannedIncomeId(Guid.NewGuid()),
+            () => new CategoryAllocationId(Guid.NewGuid()),
+            () => new SavingContributionId(Guid.NewGuid()),
+            copyPlannedIncomes: false,
+            copyExpenseCategoryAllocations: false,
+            copySavingContributions: false);
+
+        Assert.Empty(copy.PlannedIncomes);
+        Assert.Empty(copy.ExpenseCategoryAllocations);
+        Assert.Empty(copy.SavingContributions);
+        Assert.Equal(Money.Zero(Currency.PLN), copy.TotalPlannedIncome);
+        Assert.Equal(Money.Zero(Currency.PLN), copy.TotalAllocatedExpenses);
+        Assert.Equal(Money.Zero(Currency.PLN), copy.TotalSavingContributions);
+        Assert.Equal(Money.Zero(Currency.PLN), copy.PlannedFinancialResult);
     }
 
     [Fact]

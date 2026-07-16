@@ -12,6 +12,13 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
     private readonly List<CategoryAllocation> _expenseCategoryAllocations = [];
     private readonly List<SavingContribution> _savingContributions = [];
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BudgetPlan"/> class.
+    /// </summary>
+    /// <param name="id">The identifier of the budget plan.</param>
+    /// <param name="ownerId">The identifier of the owner of the budget plan.</param>
+    /// <param name="period">The period covered by the budget plan.</param>
+    /// <param name="defaultCurrency">The default currency used for totals and allocations.</param>
     public BudgetPlan(
         BudgetPlanId id,
         OwnerId ownerId,
@@ -34,19 +41,161 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         PlannedFinancialResult = Money.Zero(defaultCurrency);
     }
 
+    /// <summary>
+    /// Gets the identifier of the owner of the budget plan.
+    /// </summary>
     public OwnerId OwnerId { get; private set; }
+
+    /// <summary>
+    /// Gets the current status of the budget plan.
+    /// </summary>
     public BudgetPlanStatus Status { get; private set; }
+
+    /// <summary>
+    /// Gets the current budget fit risk calculated from planned income, expenses, and savings.
+    /// </summary>
     public BudgetFitRisk BudgetFitRisk { get; private set; }
+
+    /// <summary>
+    /// Gets the total planned income in the default currency.
+    /// </summary>
     public Money TotalPlannedIncome { get; private set; }
+
+    /// <summary>
+    /// Gets the total allocated expenses in the default currency.
+    /// </summary>
     public Money TotalAllocatedExpenses { get; private set; }
+
+    /// <summary>
+    /// Gets the total saving contributions in the default currency.
+    /// </summary>
     public Money TotalSavingContributions { get; private set; }
+
+    /// <summary>
+    /// Gets the planned financial result after expenses and savings are subtracted from income.
+    /// </summary>
     public Money PlannedFinancialResult { get; private set; }
+
+    /// <summary>
+    /// Gets the period covered by the budget plan.
+    /// </summary>
     public BudgetPeriod Period { get; private set; }
+
+    /// <summary>
+    /// Gets the default currency used by the budget plan.
+    /// </summary>
     public Currency DefaultCurrency { get; private set; }
+
+    /// <summary>
+    /// Gets the planned income entries in the budget plan.
+    /// </summary>
     public IReadOnlyCollection<PlannedIncome> PlannedIncomes => _plannedIncomes.AsReadOnly();
+
+    /// <summary>
+    /// Gets the expense category allocations in the budget plan.
+    /// </summary>
     public IReadOnlyCollection<CategoryAllocation> ExpenseCategoryAllocations => _expenseCategoryAllocations.AsReadOnly();
+
+    /// <summary>
+    /// Gets the saving contributions in the budget plan.
+    /// </summary>
     public IReadOnlyCollection<SavingContribution> SavingContributions => _savingContributions.AsReadOnly();
 
+    /// <summary>
+    /// Creates a new budget plan for another period and optionally copies planned entries.
+    /// </summary>
+    /// <param name="id">The identifier of the copied budget plan.</param>
+    /// <param name="period">The period of the copied budget plan.</param>
+    /// <param name="plannedIncomeIdFactory">A factory that creates identifiers for copied planned incomes.</param>
+    /// <param name="categoryAllocationIdFactory">A factory that creates identifiers for copied category allocations.</param>
+    /// <param name="savingContributionIdFactory">A factory that creates identifiers for copied saving contributions.</param>
+    /// <param name="copyPlannedIncomes">A value indicating whether planned incomes should be copied.</param>
+    /// <param name="copyExpenseCategoryAllocations">A value indicating whether expense category allocations should be copied.</param>
+    /// <param name="copySavingContributions">A value indicating whether saving contributions should be copied.</param>
+    /// <returns>The copied budget plan.</returns>
+    public BudgetPlan CopyTo(
+        BudgetPlanId id,
+        BudgetPeriod period,
+        Func<PlannedIncomeId> plannedIncomeIdFactory,
+        Func<CategoryAllocationId> categoryAllocationIdFactory,
+        Func<SavingContributionId> savingContributionIdFactory,
+        bool copyPlannedIncomes = true,
+        bool copyExpenseCategoryAllocations = true,
+        bool copySavingContributions = true)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(period);
+        ArgumentNullException.ThrowIfNull(plannedIncomeIdFactory);
+        ArgumentNullException.ThrowIfNull(categoryAllocationIdFactory);
+        ArgumentNullException.ThrowIfNull(savingContributionIdFactory);
+
+        var copy = new BudgetPlan(id, OwnerId, period, DefaultCurrency);
+
+        if (copyPlannedIncomes)
+        {
+            foreach (var income in _plannedIncomes)
+            {
+                var plannedIncomeId = plannedIncomeIdFactory();
+                copy.EnsurePlannedIncomeIdIsUnique(plannedIncomeId);
+
+                copy._plannedIncomes.Add(new PlannedIncome(
+                    plannedIncomeId,
+                    income.CategoryId,
+                    income.Title,
+                    income.Amount,
+                    MoveDateToPeriod(income.ExpectedDate, period),
+                    income.ConvertedAmount,
+                    income.ConversionDate is null
+                        ? null
+                        : MoveDateToPeriod(income.ConversionDate.Value, period)));
+            }
+        }
+
+        if (copyExpenseCategoryAllocations)
+        {
+            foreach (var allocation in _expenseCategoryAllocations)
+            {
+                var allocationId = categoryAllocationIdFactory();
+                copy.EnsureCategoryAllocationIdIsUnique(allocationId);
+
+                copy._expenseCategoryAllocations.Add(new CategoryAllocation(
+                    allocationId,
+                    allocation.CategoryId,
+                    allocation.Amount,
+                    allocation.Flexibility));
+            }
+        }
+
+        if (copySavingContributions)
+        {
+            foreach (var contribution in _savingContributions)
+            {
+                var contributionId = savingContributionIdFactory();
+                copy.EnsureSavingContributionIdIsUnique(contributionId);
+
+                copy._savingContributions.Add(new SavingContribution(
+                    contributionId,
+                    contribution.CategoryId,
+                    contribution.Amount));
+            }
+        }
+
+        copy.RecalculateAllocations();
+
+        return copy;
+    }
+
+    /// <summary>
+    /// Adds a planned income entry to the budget plan.
+    /// </summary>
+    /// <param name="id">The identifier of the planned income.</param>
+    /// <param name="category">The income category used by the planned income.</param>
+    /// <param name="title">The title of the planned income.</param>
+    /// <param name="amount">The planned income amount.</param>
+    /// <param name="expectedDate">The date when the income is expected.</param>
+    /// <param name="convertedAmount">The income amount converted to the plan default currency, when needed.</param>
+    /// <param name="conversionDate">The date of the currency conversion, when needed.</param>
+    /// <returns>The added planned income entry.</returns>
     public PlannedIncome AddPlannedIncome(
         PlannedIncomeId id,
         BudgetCategory category,
@@ -80,6 +229,14 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         return plannedIncome;
     }
 
+    /// <summary>
+    /// Adds an expense category allocation to the budget plan.
+    /// </summary>
+    /// <param name="id">The identifier of the category allocation.</param>
+    /// <param name="category">The expense category to allocate.</param>
+    /// <param name="amount">The allocated amount in the plan default currency.</param>
+    /// <param name="flexibility">The flexibility level of the allocation.</param>
+    /// <returns>The added category allocation.</returns>
     public CategoryAllocation AddExpenseCategoryAllocation(
         CategoryAllocationId id,
         BudgetCategory category,
@@ -107,6 +264,11 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         return allocation;
     }
 
+    /// <summary>
+    /// Changes the amount of an existing expense category allocation.
+    /// </summary>
+    /// <param name="id">The identifier of the category allocation to update.</param>
+    /// <param name="amount">The new amount in the plan default currency.</param>
     public void ChangeExpenseCategoryAllocationAmount(CategoryAllocationId id, Money amount)
     {
         EnsureCanBeModified();
@@ -118,6 +280,11 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         RecalculateAllocations();
     }
 
+    /// <summary>
+    /// Changes the flexibility level of an existing expense category allocation.
+    /// </summary>
+    /// <param name="id">The identifier of the category allocation to update.</param>
+    /// <param name="flexibility">The new flexibility level.</param>
     public void ChangeExpenseCategoryAllocationFlexibility(CategoryAllocationId id, CategoryAllocationFlexibility flexibility)
     {
         EnsureCanBeModified();
@@ -128,6 +295,32 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         RecalculateAllocations();
     }
 
+    /// <summary>
+    /// Removes an existing expense category allocation.
+    /// </summary>
+    /// <param name="id">The identifier of the category allocation to remove.</param>
+    public void RemoveExpenseCategoryAllocation(CategoryAllocationId id)
+    {
+        EnsureCanBeModified();
+
+        var allocation = GetExpenseCategoryAllocation(id);
+
+        if (allocation.Flexibility == CategoryAllocationFlexibility.Fixed)
+        {
+            throw new InvalidOperationException("Fixed expense category allocations cannot be removed.");
+        }
+
+        _expenseCategoryAllocations.Remove(allocation);
+        RecalculateAllocations();
+    }
+
+    /// <summary>
+    /// Adds a saving contribution to the budget plan.
+    /// </summary>
+    /// <param name="id">The identifier of the saving contribution.</param>
+    /// <param name="category">The saving category that receives the contribution.</param>
+    /// <param name="amount">The contribution amount in the plan default currency.</param>
+    /// <returns>The added saving contribution.</returns>
     public SavingContribution AddSavingContribution(
         SavingContributionId id,
         BudgetCategory category,
@@ -153,6 +346,11 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         return contribution;
     }
 
+    /// <summary>
+    /// Changes the amount of an existing saving contribution.
+    /// </summary>
+    /// <param name="id">The identifier of the saving contribution to update.</param>
+    /// <param name="amount">The new contribution amount in the plan default currency.</param>
     public void ChangeSavingContributionAmount(SavingContributionId id, Money amount)
     {
         EnsureCanBeModified();
@@ -164,6 +362,23 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         RecalculateAllocations();
     }
 
+    /// <summary>
+    /// Removes an existing saving contribution from the budget plan.
+    /// </summary>
+    /// <param name="id">The identifier of the saving contribution to remove.</param>
+    public void RemoveSavingContribution(SavingContributionId id)
+    {
+        EnsureCanBeModified();
+
+        var contribution = GetSavingContribution(id);
+
+        _savingContributions.Remove(contribution);
+        RecalculateAllocations();
+    }
+
+    /// <summary>
+    /// Activates the budget plan.
+    /// </summary>
     public void Activate()
     {
         if (Status != BudgetPlanStatus.Draft)
@@ -174,6 +389,9 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         ChangeStatus(BudgetPlanStatus.Active);
     }
 
+    /// <summary>
+    /// Closes the budget plan.
+    /// </summary>
     public void Close()
     {
         if (Status == BudgetPlanStatus.Closed)
@@ -422,6 +640,13 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
 
     private static Money GetIncomeAmountInDefaultCurrency(PlannedIncome income)
         => income.ConvertedAmount ?? income.Amount;
+
+    private static DateOnly MoveDateToPeriod(DateOnly date, BudgetPeriod period)
+    {
+        var day = Math.Min(date.Day, period.EndDate.Day);
+
+        return new DateOnly(period.Year, period.Month, day);
+    }
 
     private void ChangeStatus(BudgetPlanStatus status)
     {
