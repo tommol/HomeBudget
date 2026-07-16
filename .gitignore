@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+TestResults/
+coverage/
+*.trx
+*.nupkg
+*.snupkg

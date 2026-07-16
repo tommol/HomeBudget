@@ -1,0 +1,6 @@
+@HomeBudget.Api_HostAddress = http://localhost:0
+
+GET {{HomeBudget.Api_HostAddress}}/health
+Accept: application/json
+
+###

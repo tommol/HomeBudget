@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HomeBudget.Api/HomeBudget.Api.csproj" />
+    <Project Path="src/HomeBudget.Application/HomeBudget.Application.csproj" />
+    <Project Path="src/HomeBudget.Client/HomeBudget.Client.csproj" />
+    <Project Path="src/HomeBudget.Contracts/HomeBudget.Contracts.csproj" />
+    <Project Path="src/HomeBudget.Domain/HomeBudget.Domain.csproj" />
+    <Project Path="src/HomeBudget.Infrastructure.Server/HomeBudget.Infrastructure.Server.csproj" />
+    <Project Path="src/HomeBudget.Maui/HomeBudget.Maui.csproj" />
+    <Project Path="src/HomeBudget.Ui/HomeBudget.Ui.csproj" />
+    <Project Path="src/HomeBudget.Web/HomeBudget.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HomeBudget.Api.Tests/HomeBudget.Api.Tests.csproj" />
+    <Project Path="tests/HomeBudget.Application.Tests/HomeBudget.Application.Tests.csproj" />
+    <Project Path="tests/HomeBudget.Client.Tests/HomeBudget.Client.Tests.csproj" />
+    <Project Path="tests/HomeBudget.Domain.Tests/HomeBudget.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
