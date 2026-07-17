@@ -760,6 +760,27 @@ public sealed class BudgetPlanTests
     }
 
     [Fact]
+    public void ChangeExpenseCategoryAllocationAmount_RaisesCategoryAllocationAmountChangedEvent()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        var allocation = AddAllocation(budgetPlan, 250m, CategoryAllocationFlexibility.Fixed);
+        var newAmount = new Money(750m, Currency.PLN);
+        budgetPlan.ClearDomainEvents();
+        var before = DateTimeOffset.UtcNow;
+
+        budgetPlan.ChangeExpenseCategoryAllocationAmount(allocation.Id, newAmount);
+
+        var after = DateTimeOffset.UtcNow;
+        var domainEvent = Assert.IsType<CategoryAllocationAmountChangedEvent>(Assert.Single(budgetPlan.DomainEvents));
+        Assert.Equal(budgetPlan.Id, domainEvent.BudgetPlanId);
+        Assert.Equal(allocation.Id, domainEvent.CategoryAllocationId);
+        Assert.Equal(allocation.CategoryId, domainEvent.CategoryId);
+        Assert.Equal(new Money(250m, Currency.PLN), domainEvent.PreviousAmount);
+        Assert.Equal(newAmount, domainEvent.NewAmount);
+        Assert.InRange(domainEvent.OccurredOnUtc, before, after);
+    }
+
+    [Fact]
     public void ChangeExpenseCategoryAllocationAmount_Throws_WhenAmountCurrencyDiffersFromDefaultCurrency()
     {
         var budgetPlan = CreateBudgetPlan();
@@ -783,6 +804,26 @@ public sealed class BudgetPlanTests
 
         Assert.Equal(CategoryAllocationFlexibility.Flexible, allocation.Flexibility);
         Assert.Equal(BudgetFitRisk.FlexibleOverrun, budgetPlan.BudgetFitRisk);
+    }
+
+    [Fact]
+    public void ChangeExpenseCategoryAllocationFlexibility_RaisesCategoryAllocationFlexibilityChangedEvent()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        var allocation = AddAllocation(budgetPlan, 250m, CategoryAllocationFlexibility.Optional);
+        budgetPlan.ClearDomainEvents();
+        var before = DateTimeOffset.UtcNow;
+
+        budgetPlan.ChangeExpenseCategoryAllocationFlexibility(allocation.Id, CategoryAllocationFlexibility.Flexible);
+
+        var after = DateTimeOffset.UtcNow;
+        var domainEvent = Assert.IsType<CategoryAllocationFlexibilityChangedEvent>(Assert.Single(budgetPlan.DomainEvents));
+        Assert.Equal(budgetPlan.Id, domainEvent.BudgetPlanId);
+        Assert.Equal(allocation.Id, domainEvent.CategoryAllocationId);
+        Assert.Equal(allocation.CategoryId, domainEvent.CategoryId);
+        Assert.Equal(CategoryAllocationFlexibility.Optional, domainEvent.PreviousFlexibility);
+        Assert.Equal(CategoryAllocationFlexibility.Flexible, domainEvent.NewFlexibility);
+        Assert.InRange(domainEvent.OccurredOnUtc, before, after);
     }
 
     [Fact]
@@ -815,6 +856,26 @@ public sealed class BudgetPlanTests
     }
 
     [Fact]
+    public void RemoveExpenseCategoryAllocation_RaisesCategoryAllocationRemovedEvent()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        var allocation = AddAllocation(budgetPlan, 600m, CategoryAllocationFlexibility.Optional);
+        budgetPlan.ClearDomainEvents();
+        var before = DateTimeOffset.UtcNow;
+
+        budgetPlan.RemoveExpenseCategoryAllocation(allocation.Id);
+
+        var after = DateTimeOffset.UtcNow;
+        var domainEvent = Assert.IsType<CategoryAllocationRemovedEvent>(Assert.Single(budgetPlan.DomainEvents));
+        Assert.Equal(budgetPlan.Id, domainEvent.BudgetPlanId);
+        Assert.Equal(allocation.Id, domainEvent.CategoryAllocationId);
+        Assert.Equal(allocation.CategoryId, domainEvent.CategoryId);
+        Assert.Equal(allocation.Amount, domainEvent.Amount);
+        Assert.Equal(allocation.Flexibility, domainEvent.Flexibility);
+        Assert.InRange(domainEvent.OccurredOnUtc, before, after);
+    }
+
+    [Fact]
     public void RemoveExpenseCategoryAllocation_Throws_WhenAllocationIsFixed()
     {
         var budgetPlan = CreateBudgetPlan();
@@ -839,6 +900,27 @@ public sealed class BudgetPlanTests
         Assert.Equal(new Money(2000m, Currency.PLN), budgetPlan.TotalSavingContributions);
         Assert.Equal(new Money(-500m, Currency.PLN), budgetPlan.PlannedFinancialResult);
         Assert.Equal(BudgetFitRisk.OptionalOverrun, budgetPlan.BudgetFitRisk);
+    }
+
+    [Fact]
+    public void ChangeSavingContributionAmount_RaisesSavingContributionAmountChangedEvent()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        var contribution = AddSavingContribution(budgetPlan, 1000m);
+        var newAmount = new Money(2000m, Currency.PLN);
+        budgetPlan.ClearDomainEvents();
+        var before = DateTimeOffset.UtcNow;
+
+        budgetPlan.ChangeSavingContributionAmount(contribution.Id, newAmount);
+
+        var after = DateTimeOffset.UtcNow;
+        var domainEvent = Assert.IsType<SavingContributionAmountChangedEvent>(Assert.Single(budgetPlan.DomainEvents));
+        Assert.Equal(budgetPlan.Id, domainEvent.BudgetPlanId);
+        Assert.Equal(contribution.Id, domainEvent.SavingContributionId);
+        Assert.Equal(contribution.CategoryId, domainEvent.CategoryId);
+        Assert.Equal(new Money(1000m, Currency.PLN), domainEvent.PreviousAmount);
+        Assert.Equal(newAmount, domainEvent.NewAmount);
+        Assert.InRange(domainEvent.OccurredOnUtc, before, after);
     }
 
     [Fact]
@@ -867,6 +949,25 @@ public sealed class BudgetPlanTests
         Assert.Equal(Money.Zero(Currency.PLN), budgetPlan.TotalSavingContributions);
         Assert.Equal(new Money(1000m, Currency.PLN), budgetPlan.PlannedFinancialResult);
         Assert.Equal(BudgetFitRisk.Balanced, budgetPlan.BudgetFitRisk);
+    }
+
+    [Fact]
+    public void RemoveSavingContribution_RaisesSavingContributionRemovedEvent()
+    {
+        var budgetPlan = CreateBudgetPlan();
+        var contribution = AddSavingContribution(budgetPlan, 1500m);
+        budgetPlan.ClearDomainEvents();
+        var before = DateTimeOffset.UtcNow;
+
+        budgetPlan.RemoveSavingContribution(contribution.Id);
+
+        var after = DateTimeOffset.UtcNow;
+        var domainEvent = Assert.IsType<SavingContributionRemovedEvent>(Assert.Single(budgetPlan.DomainEvents));
+        Assert.Equal(budgetPlan.Id, domainEvent.BudgetPlanId);
+        Assert.Equal(contribution.Id, domainEvent.SavingContributionId);
+        Assert.Equal(contribution.CategoryId, domainEvent.CategoryId);
+        Assert.Equal(contribution.Amount, domainEvent.Amount);
+        Assert.InRange(domainEvent.OccurredOnUtc, before, after);
     }
 
     [Fact]

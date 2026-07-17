@@ -286,9 +286,17 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         EnsureAllocationAmountUsesDefaultCurrency(amount);
 
         var allocation = GetExpenseCategoryAllocation(id);
+        var previousAmount = allocation.Amount;
 
         allocation.ChangeAmount(amount);
         RecalculateAllocations();
+        RaiseDomainEvent(new CategoryAllocationAmountChangedEvent(
+            Id,
+            allocation.Id,
+            allocation.CategoryId,
+            previousAmount,
+            allocation.Amount,
+            DateTimeOffset.UtcNow));
     }
 
     /// <summary>
@@ -301,9 +309,17 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         EnsureCanBeModified();
 
         var allocation = GetExpenseCategoryAllocation(id);
+        var previousFlexibility = allocation.Flexibility;
 
         allocation.ChangeFlexibility(flexibility);
         RecalculateAllocations();
+        RaiseDomainEvent(new CategoryAllocationFlexibilityChangedEvent(
+            Id,
+            allocation.Id,
+            allocation.CategoryId,
+            previousFlexibility,
+            allocation.Flexibility,
+            DateTimeOffset.UtcNow));
     }
 
     /// <summary>
@@ -323,6 +339,13 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
 
         _expenseCategoryAllocations.Remove(allocation);
         RecalculateAllocations();
+        RaiseDomainEvent(new CategoryAllocationRemovedEvent(
+            Id,
+            allocation.Id,
+            allocation.CategoryId,
+            allocation.Amount,
+            allocation.Flexibility,
+            DateTimeOffset.UtcNow));
     }
 
     /// <summary>
@@ -368,9 +391,17 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         EnsureSavingContributionAmountUsesDefaultCurrency(amount);
 
         var contribution = GetSavingContribution(id);
+        var previousAmount = contribution.Amount;
 
         contribution.ChangeAmount(amount);
         RecalculateAllocations();
+        RaiseDomainEvent(new SavingContributionAmountChangedEvent(
+            Id,
+            contribution.Id,
+            contribution.CategoryId,
+            previousAmount,
+            contribution.Amount,
+            DateTimeOffset.UtcNow));
     }
 
     /// <summary>
@@ -385,6 +416,12 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
 
         _savingContributions.Remove(contribution);
         RecalculateAllocations();
+        RaiseDomainEvent(new SavingContributionRemovedEvent(
+            Id,
+            contribution.Id,
+            contribution.CategoryId,
+            contribution.Amount,
+            DateTimeOffset.UtcNow));
     }
 
     /// <summary>
