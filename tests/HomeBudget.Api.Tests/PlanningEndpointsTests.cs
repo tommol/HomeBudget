@@ -1,4 +1,5 @@
 using HomeBudget.Contracts.Planning;
+using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
 using HomeBudget.Infrastructure.Server.Identity;
 using HomeBudget.Infrastructure.Server.Persistence;
@@ -78,6 +79,242 @@ public sealed class PlanningEndpointsTests
         Assert.Equal(ownerId, budgetPlan.OwnerId.Value);
     }
 
+    [Fact]
+    public async Task AddPlannedIncome_WithExistingPlanAndCategory_AddsIncome()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetPlanId = await factory.SeedBudgetPlanAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Income);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/planned-incomes",
+            new AddPlannedIncomeRequest(
+                categoryId,
+                "Salary",
+                5000m,
+                "PLN",
+                new DateOnly(2026, 7, 10)));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<AddPlannedIncomeResponse>();
+        Assert.NotNull(body);
+        Assert.NotEqual(Guid.Empty, body.Id);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var budgetPlan = await dbContext.BudgetPlans.SingleAsync();
+        var plannedIncome = Assert.Single(budgetPlan.PlannedIncomes);
+
+        Assert.Equal(body.Id, plannedIncome.Id.Value);
+        Assert.Equal(categoryId, plannedIncome.CategoryId.Value);
+        Assert.Equal("Salary", plannedIncome.Title);
+        Assert.Equal(5000m, plannedIncome.Amount.Amount);
+    }
+
+    [Fact]
+    public async Task AddPlannedIncome_WithMissingCategory_ReturnsNotFound()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetPlanId = await factory.SeedBudgetPlanAsync(ownerId);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/planned-incomes",
+            new AddPlannedIncomeRequest(
+                Guid.NewGuid(),
+                "Salary",
+                5000m,
+                "PLN",
+                new DateOnly(2026, 7, 10)));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ExpenseCategoryAllocationEndpoints_CreateUpdateAndRemoveAllocation()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetPlanId = await factory.SeedBudgetPlanAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Expense);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var createResponse = await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/expense-category-allocations",
+            new AddExpenseCategoryAllocationRequest(categoryId, 900m, "Flexible"));
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createBody = await createResponse.Content.ReadFromJsonAsync<AddExpenseCategoryAllocationResponse>();
+        Assert.NotNull(createBody);
+        var allocationId = createBody.Id;
+
+        var changeAmountResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/expense-category-allocations/{allocationId}/amount",
+            new ChangeExpenseCategoryAllocationAmountRequest(750m));
+        var changeFlexibilityResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/expense-category-allocations/{allocationId}/flexibility",
+            new ChangeExpenseCategoryAllocationFlexibilityRequest("Optional"));
+
+        Assert.Equal(HttpStatusCode.NoContent, changeAmountResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeFlexibilityResponse.StatusCode);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budgetPlan = await dbContext.BudgetPlans.SingleAsync();
+            var allocation = Assert.Single(budgetPlan.ExpenseCategoryAllocations);
+
+            Assert.Equal(750m, allocation.Amount.Amount);
+            Assert.Equal(CategoryAllocationFlexibility.Optional, allocation.Flexibility);
+        }
+
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/expense-category-allocations/{allocationId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        await using var verificationScope = factory.Services.CreateAsyncScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var reloadedBudgetPlan = await verificationDbContext.BudgetPlans.SingleAsync();
+
+        Assert.Empty(reloadedBudgetPlan.ExpenseCategoryAllocations);
+    }
+
+    [Fact]
+    public async Task SavingContributionEndpoints_CreateUpdateAndRemoveContribution()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetPlanId = await factory.SeedBudgetPlanAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Saving);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var createResponse = await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/saving-contributions",
+            new AddSavingContributionRequest(categoryId, 1000m));
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createBody = await createResponse.Content.ReadFromJsonAsync<AddSavingContributionResponse>();
+        Assert.NotNull(createBody);
+        var savingContributionId = createBody.Id;
+
+        var changeAmountResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/saving-contributions/{savingContributionId}/amount",
+            new ChangeSavingContributionAmountRequest(1200m));
+
+        Assert.Equal(HttpStatusCode.NoContent, changeAmountResponse.StatusCode);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budgetPlan = await dbContext.BudgetPlans.SingleAsync();
+            var contribution = Assert.Single(budgetPlan.SavingContributions);
+
+            Assert.Equal(1200m, contribution.Amount.Amount);
+        }
+
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/saving-contributions/{savingContributionId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        await using var verificationScope = factory.Services.CreateAsyncScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var reloadedBudgetPlan = await verificationDbContext.BudgetPlans.SingleAsync();
+
+        Assert.Empty(reloadedBudgetPlan.SavingContributions);
+    }
+
+    [Fact]
+    public async Task StatusEndpoints_ActivateAndCloseBudgetPlan()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetPlanId = await factory.SeedBudgetPlanAsync(ownerId);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var activateResponse = await client.PostAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/activate",
+            content: null);
+        var closeResponse = await client.PostAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/close",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.NoContent, activateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, closeResponse.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var budgetPlan = await dbContext.BudgetPlans.SingleAsync();
+
+        Assert.Equal(BudgetPlanStatus.Closed, budgetPlan.Status);
+    }
+
+    [Fact]
+    public async Task CopyBudgetPlan_CopiesSelectedEntriesToTargetPeriod()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetPlanId = await factory.SeedBudgetPlanAsync(ownerId);
+        var incomeCategoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Income);
+        var expenseCategoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Expense);
+        var savingCategoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Saving);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/planned-incomes",
+            new AddPlannedIncomeRequest(
+                incomeCategoryId,
+                "Salary",
+                5000m,
+                "PLN",
+                new DateOnly(2026, 7, 10)));
+        await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/expense-category-allocations",
+            new AddExpenseCategoryAllocationRequest(expenseCategoryId, 900m, "Flexible"));
+        await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/saving-contributions",
+            new AddSavingContributionRequest(savingCategoryId, 1000m));
+
+        var copyResponse = await client.PostAsJsonAsync(
+            $"/api/v1/planning/budget-plans/{budgetPlanId}/copies",
+            new CopyBudgetPlanRequest(
+                2026,
+                8,
+                CopyPlannedIncomes: true,
+                CopyExpenseCategoryAllocations: false,
+                CopySavingContributions: true));
+        var copyResponseContent = await copyResponse.Content.ReadAsStringAsync();
+
+        Assert.True(copyResponse.StatusCode == HttpStatusCode.Created, copyResponseContent);
+
+        var copyBody = await copyResponse.Content.ReadFromJsonAsync<CopyBudgetPlanResponse>();
+        Assert.NotNull(copyBody);
+        Assert.NotEqual(Guid.Empty, copyBody.Id);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var copiedBudgetPlan = await dbContext.BudgetPlans.SingleAsync(plan => plan.Id == new BudgetPlanId(copyBody.Id));
+
+        Assert.Equal(2026, copiedBudgetPlan.Period.Year);
+        Assert.Equal(8, copiedBudgetPlan.Period.Month);
+        Assert.Single(copiedBudgetPlan.PlannedIncomes);
+        Assert.Empty(copiedBudgetPlan.ExpenseCategoryAllocations);
+        Assert.Single(copiedBudgetPlan.SavingContributions);
+    }
+
     [Theory]
     [MemberData(nameof(InvalidCreateBudgetPlanRequests))]
     public async Task CreateBudgetPlan_WithInvalidRequest_ReturnsBadRequest(CreateBudgetPlanRequest request)
@@ -106,6 +343,8 @@ public sealed class PlanningEndpointsTests
 
         var document = await response.Content.ReadAsStringAsync();
         Assert.Contains("/api/v1/planning/budget-plans", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/planning/budget-plans/{budgetPlanId}/planned-incomes", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/planning/budget-plans/{budgetPlanId}/saving-contributions", document, StringComparison.Ordinal);
         Assert.Contains("\"Bearer\"", document, StringComparison.Ordinal);
         Assert.Contains("\"bearer\"", document, StringComparison.OrdinalIgnoreCase);
     }
@@ -177,6 +416,44 @@ public sealed class PlanningEndpointsTests
                 TestAuthenticationHandler.Issuer,
                 subject));
             await dbContext.SaveChangesAsync();
+        }
+
+        public async Task<Guid> SeedBudgetPlanAsync(
+            Guid ownerId,
+            int year = 2026,
+            int month = 7,
+            string currencyCode = "PLN")
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budgetPlan = new BudgetPlan(
+                new BudgetPlanId(Guid.NewGuid()),
+                new OwnerId(ownerId),
+                new BudgetPeriod(year, month),
+                new Currency(currencyCode));
+
+            await dbContext.Database.EnsureCreatedAsync();
+            dbContext.BudgetPlans.Add(budgetPlan);
+            await dbContext.SaveChangesAsync();
+
+            return budgetPlan.Id.Value;
+        }
+
+        public async Task<Guid> SeedBudgetCategoryAsync(Guid ownerId, BudgetCategoryType type)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budgetCategory = new BudgetCategory(
+                new BudgetCategoryId(Guid.NewGuid()),
+                new OwnerId(ownerId),
+                $"{type} Category",
+                type);
+
+            await dbContext.Database.EnsureCreatedAsync();
+            dbContext.BudgetCategories.Add(budgetCategory);
+            await dbContext.SaveChangesAsync();
+
+            return budgetCategory.Id.Value;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

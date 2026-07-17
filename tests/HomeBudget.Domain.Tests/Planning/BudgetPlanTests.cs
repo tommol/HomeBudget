@@ -1180,18 +1180,21 @@ public sealed class BudgetPlanTests
         Assert.Equal(income.CategoryId, copiedIncome.CategoryId);
         Assert.Equal(income.Title, copiedIncome.Title);
         Assert.Equal(income.Amount, copiedIncome.Amount);
+        Assert.NotSame(income.Amount, copiedIncome.Amount);
         Assert.Equal(new DateOnly(2026, 2, 28), copiedIncome.ExpectedDate);
 
         var copiedAllocation = Assert.Single(copy.ExpenseCategoryAllocations);
         Assert.NotEqual(allocation.Id, copiedAllocation.Id);
         Assert.Equal(allocation.CategoryId, copiedAllocation.CategoryId);
         Assert.Equal(allocation.Amount, copiedAllocation.Amount);
+        Assert.NotSame(allocation.Amount, copiedAllocation.Amount);
         Assert.Equal(allocation.Flexibility, copiedAllocation.Flexibility);
 
         var copiedContribution = Assert.Single(copy.SavingContributions);
         Assert.NotEqual(contribution.Id, copiedContribution.Id);
         Assert.Equal(contribution.CategoryId, copiedContribution.CategoryId);
         Assert.Equal(contribution.Amount, copiedContribution.Amount);
+        Assert.NotSame(contribution.Amount, copiedContribution.Amount);
     }
 
     [Fact]

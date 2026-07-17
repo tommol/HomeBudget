@@ -153,9 +153,9 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
                     plannedIncomeId,
                     income.CategoryId,
                     income.Title,
-                    income.Amount,
+                    CopyMoney(income.Amount),
                     MoveDateToPeriod(income.ExpectedDate, period),
-                    income.ConvertedAmount,
+                    CopyNullableMoney(income.ConvertedAmount),
                     income.ConversionDate is null
                         ? null
                         : MoveDateToPeriod(income.ConversionDate.Value, period)));
@@ -172,7 +172,7 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
                 copy._expenseCategoryAllocations.Add(new CategoryAllocation(
                     allocationId,
                     allocation.CategoryId,
-                    allocation.Amount,
+                    CopyMoney(allocation.Amount),
                     allocation.Flexibility));
             }
         }
@@ -187,7 +187,7 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
                 copy._savingContributions.Add(new SavingContribution(
                     contributionId,
                     contribution.CategoryId,
-                    contribution.Amount));
+                    CopyMoney(contribution.Amount)));
             }
         }
 
@@ -695,6 +695,16 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
 
         return new DateOnly(period.Year, period.Month, day);
     }
+
+    private static Money CopyMoney(Money money)
+    {
+        ArgumentNullException.ThrowIfNull(money);
+
+        return new Money(money.Amount, money.Currency);
+    }
+
+    private static Money? CopyNullableMoney(Money? money)
+        => money is null ? null : CopyMoney(money);
 
     private void ChangeStatus(BudgetPlanStatus status)
     {

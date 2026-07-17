@@ -4,19 +4,15 @@ using HomeBudget.Application.Abstractions;
 using HomeBudget.Application.Planning.CreateBudgetPlan;
 using HomeBudget.Contracts.Planning;
 
-namespace HomeBudget.Api.Endpoints;
+namespace HomeBudget.Api.Endpoints.Planning;
 
-internal static class PlanningEndpoints
+internal static class CreateBudgetPlanEndpoint
 {
-    public static IEndpointRouteBuilder MapPlanningEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapCreateBudgetPlanEndpoint(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/planning/budget-plans")
-            .WithTags("Planning / Budget Plans");
-
-        group.MapPost("/", CreateBudgetPlanAsync)
+        app.MapPost("/", HandleAsync)
             .MapToApiVersion(new ApiVersion(1))
             .WithGroupName("v1")
-            .AddEndpointFilter<CurrentOwnerEndpointFilter>()
             .WithName("CreateBudgetPlan")
             .Produces<CreateBudgetPlanResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -26,14 +22,14 @@ internal static class PlanningEndpoints
         return app;
     }
 
-    private static async Task<IResult> CreateBudgetPlanAsync(
+    private static async Task<IResult> HandleAsync(
         CreateBudgetPlanRequest request,
         ICurrentOwner currentOwner,
         ICommandHandler<CreateBudgetPlanCommand, Guid> handler,
         IUnitOfWork unitOfWork,
         CancellationToken cancellationToken)
     {
-        try
+        return await PlanningEndpointExecutor.ExecuteAsync(async () =>
         {
             var command = new CreateBudgetPlanCommand(
                 currentOwner.OwnerId,
@@ -47,13 +43,6 @@ internal static class PlanningEndpoints
             return TypedResults.Created(
                 $"/api/v1/planning/budget-plans/{budgetPlanId}",
                 new CreateBudgetPlanResponse(budgetPlanId));
-        }
-        catch (ArgumentException exception)
-        {
-            return TypedResults.Problem(
-                title: "Invalid request.",
-                detail: exception.Message,
-                statusCode: StatusCodes.Status400BadRequest);
-        }
+        });
     }
 }
