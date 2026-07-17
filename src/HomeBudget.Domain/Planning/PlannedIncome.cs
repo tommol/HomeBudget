@@ -10,6 +10,13 @@ public sealed class PlannedIncome : Entity<PlannedIncomeId>
 {
     private const int MaxTitleLength = 100;
 
+    private PlannedIncome()
+    {
+        CategoryId = null!;
+        Title = string.Empty;
+        Amount = null!;
+    }
+
     internal PlannedIncome(
         PlannedIncomeId id,
         BudgetCategoryId categoryId,

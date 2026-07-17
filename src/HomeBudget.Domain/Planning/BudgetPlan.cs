@@ -12,6 +12,17 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
     private readonly List<CategoryAllocation> _expenseCategoryAllocations = [];
     private readonly List<SavingContribution> _savingContributions = [];
 
+    private BudgetPlan()
+    {
+        OwnerId = null!;
+        TotalPlannedIncome = null!;
+        TotalAllocatedExpenses = null!;
+        TotalSavingContributions = null!;
+        PlannedFinancialResult = null!;
+        Period = null!;
+        DefaultCurrency = null!;
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetPlan"/> class.
     /// </summary>

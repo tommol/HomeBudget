@@ -9,6 +9,12 @@ public sealed class BudgetCategory : Entity<BudgetCategoryId>
 {
     private const int MaxNameLength = 100;
 
+    private BudgetCategory()
+    {
+        OwnerId = null!;
+        Name = string.Empty;
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetCategory"/> class.
     /// </summary>

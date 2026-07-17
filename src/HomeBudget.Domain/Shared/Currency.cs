@@ -7,6 +7,11 @@ namespace HomeBudget.Domain.Shared;
 /// </summary>
 public sealed class Currency : ValueObject
 {
+    private Currency()
+    {
+        Code = string.Empty;
+    }
+
     /// <summary>
     /// Gets the three-letter ISO 4217 code of the currency.
     /// </summary>

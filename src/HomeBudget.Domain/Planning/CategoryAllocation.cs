@@ -8,6 +8,12 @@ namespace HomeBudget.Domain.Planning;
 /// </summary>
 public sealed class CategoryAllocation : Entity<CategoryAllocationId>
 {
+    private CategoryAllocation()
+    {
+        CategoryId = null!;
+        Amount = null!;
+    }
+
     internal CategoryAllocation(
         CategoryAllocationId id,
         BudgetCategoryId categoryId,

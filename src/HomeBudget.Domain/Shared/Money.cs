@@ -7,6 +7,11 @@ namespace HomeBudget.Domain.Shared;
 /// </summary>
 public sealed class Money : ValueObject
 {
+    private Money()
+    {
+        Currency = null!;
+    }
+
     /// <summary>
     /// Gets the amount of money.
     /// </summary>

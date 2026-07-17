@@ -15,5 +15,6 @@
     <Project Path="tests/HomeBudget.Application.Tests/HomeBudget.Application.Tests.csproj" />
     <Project Path="tests/HomeBudget.Client.Tests/HomeBudget.Client.Tests.csproj" />
     <Project Path="tests/HomeBudget.Domain.Tests/HomeBudget.Domain.Tests.csproj" />
+    <Project Path="tests/HomeBudget.Infrastructure.Server.Tests/HomeBudget.Infrastructure.Server.Tests.csproj" />
   </Folder>
 </Solution>

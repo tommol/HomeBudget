@@ -7,6 +7,10 @@ namespace HomeBudget.Domain.Shared;
 /// </summary>
 public sealed class BudgetPeriod : ValueObject
 {
+    private BudgetPeriod()
+    {
+    }
+
     /// <summary>
     /// Gets the year of the budget period.
     /// </summary>
@@ -20,12 +24,12 @@ public sealed class BudgetPeriod : ValueObject
     /// <summary>
     /// Gets the start date of the budget period.
     /// </summary>
-    public DateOnly StartDate { get; }
+    public DateOnly StartDate => new(Year, Month, 1);
 
     /// <summary>
     /// Gets the end date of the budget period.
     /// </summary>
-    public DateOnly EndDate { get; }
+    public DateOnly EndDate => new(Year, Month, DateTime.DaysInMonth(Year, Month));
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetPeriod"/> class with the specified year and month.
@@ -42,8 +46,6 @@ public sealed class BudgetPeriod : ValueObject
 
         Year = year;
         Month = month;
-        StartDate = new DateOnly(year, month, 1);
-        EndDate = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
     }
 
     /// <summary>

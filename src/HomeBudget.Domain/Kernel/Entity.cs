@@ -10,6 +10,14 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
     /// <summary>
     /// Initializes a new instance of the <see cref="Entity{TId}"/> class.
     /// </summary>
+    protected Entity()
+    {
+        Id = default!;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Entity{TId}"/> class.
+    /// </summary>
     /// <param name="id">The identifier of the entity.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is the default value.</exception>
     protected Entity(TId id)

@@ -4,10 +4,17 @@ namespace HomeBudget.Domain.Kernel;
 /// Represents an aggregate root in the domain model.
 /// </summary>
 /// <typeparam name="TId">The type of the aggregate root's identifier.</typeparam>
-public abstract class AggregateRoot<TId> : Entity<TId>
+public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
     where TId : notnull
 {
     private readonly List<IDomainEvent> _domainEvents = [];
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AggregateRoot{TId}"/> class.
+    /// </summary>
+    protected AggregateRoot()
+    {
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AggregateRoot{TId}"/> class.

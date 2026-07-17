@@ -8,6 +8,12 @@ namespace HomeBudget.Domain.Planning;
 /// </summary>
 public sealed class SavingContribution : Entity<SavingContributionId>
 {
+    private SavingContribution()
+    {
+        CategoryId = null!;
+        Amount = null!;
+    }
+
     internal SavingContribution(
         SavingContributionId id,
         BudgetCategoryId categoryId,
