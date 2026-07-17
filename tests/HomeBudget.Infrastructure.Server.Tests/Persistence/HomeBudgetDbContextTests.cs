@@ -1,5 +1,7 @@
 using HomeBudget.Application.Abstractions;
+using HomeBudget.Application.Execution;
 using HomeBudget.Application.Planning;
+using HomeBudget.Domain.Execution;
 using HomeBudget.Domain.Kernel;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
@@ -170,6 +172,37 @@ public sealed class HomeBudgetDbContextTests
         Assert.Null(await budgetPlanRepository.GetByIdAndOwnerIdAsync(budgetPlan.Id, otherOwnerId));
         Assert.NotNull(await categoryRepository.GetByIdAndOwnerIdAsync(category.Id, ownerId));
         Assert.Null(await categoryRepository.GetByIdAndOwnerIdAsync(category.Id, otherOwnerId));
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_CreatesBudget_WhenBudgetPlanIsActivated()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var serviceProvider = CreateServiceProvider(connection, _ => { });
+
+        using var scope = serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        var budgetPlan = CreateBudgetPlan(ownerId);
+
+        dbContext.BudgetPlans.Add(budgetPlan);
+        await dbContext.SaveChangesAsync();
+
+        budgetPlan.Activate();
+
+        await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().SaveChangesAsync();
+
+        var budget = await dbContext.Budgets.SingleAsync();
+
+        Assert.Equal(new BudgetId(budgetPlan.Id.Value), budget.Id);
+        Assert.Equal(budgetPlan.OwnerId, budget.OwnerId);
+        Assert.Equal(budgetPlan.Period, budget.Period);
+        Assert.Equal(budgetPlan.DefaultCurrency, budget.DefaultCurrency);
+        Assert.Equal(BudgetStatus.Active, budget.Status);
     }
 
     private static DbContextOptions<HomeBudgetDbContext> CreateOptions(SqliteConnection connection)

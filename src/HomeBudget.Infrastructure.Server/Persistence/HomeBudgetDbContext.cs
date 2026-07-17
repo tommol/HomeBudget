@@ -1,4 +1,5 @@
 using HomeBudget.Application.Abstractions;
+using HomeBudget.Domain.Execution;
 using HomeBudget.Domain.Kernel;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
@@ -39,6 +40,11 @@ public sealed class HomeBudgetDbContext : DbContext, IUnitOfWork
     /// Gets the budget plans set.
     /// </summary>
     public DbSet<BudgetPlan> BudgetPlans => Set<BudgetPlan>();
+
+    /// <summary>
+    /// Gets the executed budgets set.
+    /// </summary>
+    public DbSet<Budget> Budgets => Set<Budget>();
 
     /// <summary>
     /// Gets the budget categories set.
