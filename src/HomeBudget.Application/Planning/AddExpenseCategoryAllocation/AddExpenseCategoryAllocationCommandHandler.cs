@@ -36,8 +36,14 @@ public sealed class AddExpenseCategoryAllocationCommandHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
-        var category = await _budgetCategoryRepository.GetRequiredByIdAsync(command.CategoryId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
+        var category = await _budgetCategoryRepository.GetRequiredByIdAsync(
+            command.CategoryId,
+            command.OwnerId,
+            cancellationToken);
         var flexibility = PlanningCommandParsers.ParseCategoryAllocationFlexibility(
             command.Flexibility,
             nameof(command.Flexibility));

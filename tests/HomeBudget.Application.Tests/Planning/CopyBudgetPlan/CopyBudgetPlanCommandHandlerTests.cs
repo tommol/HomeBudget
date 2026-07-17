@@ -32,7 +32,7 @@ public sealed class CopyBudgetPlanCommandHandlerTests
         var handler = new CopyBudgetPlanCommandHandler(repository);
 
         var copiedBudgetPlanId = await handler.HandleAsync(
-            new CopyBudgetPlanCommand(sourceBudgetPlan.Id.Value, 2026, 2));
+            new CopyBudgetPlanCommand(sourceBudgetPlan.OwnerId.Value, sourceBudgetPlan.Id.Value, 2026, 2));
 
         var copiedBudgetPlan = Assert.Single(repository.AddedBudgetPlans);
         Assert.Equal(copiedBudgetPlan.Id.Value, copiedBudgetPlanId);
@@ -79,6 +79,7 @@ public sealed class CopyBudgetPlanCommandHandlerTests
         var handler = new CopyBudgetPlanCommandHandler(repository);
 
         await handler.HandleAsync(new CopyBudgetPlanCommand(
+            sourceBudgetPlan.OwnerId.Value,
             sourceBudgetPlan.Id.Value,
             2026,
             8,
@@ -99,7 +100,7 @@ public sealed class CopyBudgetPlanCommandHandlerTests
         var handler = new CopyBudgetPlanCommandHandler(repository);
 
         var exception = await Assert.ThrowsAsync<BudgetPlanNotFoundException>(() => handler.HandleAsync(
-            new CopyBudgetPlanCommand(sourceBudgetPlanId, 2026, 8)));
+            new CopyBudgetPlanCommand(Guid.NewGuid(), sourceBudgetPlanId, 2026, 8)));
 
         Assert.Equal(sourceBudgetPlanId, exception.BudgetPlanId);
         Assert.Empty(repository.AddedBudgetPlans);

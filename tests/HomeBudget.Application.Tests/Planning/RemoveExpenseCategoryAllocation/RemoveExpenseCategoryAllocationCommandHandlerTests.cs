@@ -21,6 +21,7 @@ public sealed class RemoveExpenseCategoryAllocationCommandHandlerTests
         var handler = new RemoveExpenseCategoryAllocationCommandHandler(budgetPlanRepository);
 
         await handler.HandleAsync(new RemoveExpenseCategoryAllocationCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             allocation.Id.Value));
 
@@ -43,6 +44,7 @@ public sealed class RemoveExpenseCategoryAllocationCommandHandlerTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => handler.HandleAsync(
             new RemoveExpenseCategoryAllocationCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 allocation.Id.Value)));
 

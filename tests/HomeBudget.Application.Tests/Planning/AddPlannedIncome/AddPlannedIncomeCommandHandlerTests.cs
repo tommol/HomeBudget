@@ -18,6 +18,7 @@ public sealed class AddPlannedIncomeCommandHandlerTests
         var handler = new AddPlannedIncomeCommandHandler(budgetPlanRepository, categoryRepository);
 
         var plannedIncomeId = await handler.HandleAsync(new AddPlannedIncomeCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             category.Id.Value,
             "Salary",
@@ -44,6 +45,7 @@ public sealed class AddPlannedIncomeCommandHandlerTests
         var conversionDate = new DateOnly(2026, 7, 9);
 
         await handler.HandleAsync(new AddPlannedIncomeCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             category.Id.Value,
             "Bonus",
@@ -72,6 +74,7 @@ public sealed class AddPlannedIncomeCommandHandlerTests
 
         var exception = await Assert.ThrowsAsync<BudgetCategoryNotFoundException>(() => handler.HandleAsync(
             new AddPlannedIncomeCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 missingCategoryId,
                 "Salary",

@@ -21,6 +21,7 @@ public sealed class ChangeExpenseCategoryAllocationFlexibilityCommandHandlerTest
         var handler = new ChangeExpenseCategoryAllocationFlexibilityCommandHandler(budgetPlanRepository);
 
         await handler.HandleAsync(new ChangeExpenseCategoryAllocationFlexibilityCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             allocation.Id.Value,
             "optional"));
@@ -43,6 +44,7 @@ public sealed class ChangeExpenseCategoryAllocationFlexibilityCommandHandlerTest
 
         var exception = await Assert.ThrowsAsync<ArgumentException>(() => handler.HandleAsync(
             new ChangeExpenseCategoryAllocationFlexibilityCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 allocation.Id.Value,
                 "sometimes")));

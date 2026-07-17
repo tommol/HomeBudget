@@ -27,7 +27,10 @@ public sealed class CloseBudgetPlanCommandHandler : ICommandHandler<CloseBudgetP
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
 
         budgetPlan.Close();
 

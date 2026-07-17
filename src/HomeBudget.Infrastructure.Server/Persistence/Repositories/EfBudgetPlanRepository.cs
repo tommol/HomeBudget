@@ -1,5 +1,6 @@
 using HomeBudget.Application.Planning;
 using HomeBudget.Domain.Planning;
+using HomeBudget.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeBudget.Infrastructure.Server.Persistence.Repositories;
@@ -21,6 +22,21 @@ internal sealed class EfBudgetPlanRepository : IBudgetPlanRepository
 
         return _dbContext.BudgetPlans
             .SingleOrDefaultAsync(budgetPlan => budgetPlan.Id == id, cancellationToken);
+    }
+
+    public Task<BudgetPlan?> GetByIdAndOwnerIdAsync(
+        BudgetPlanId id,
+        OwnerId ownerId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(ownerId);
+
+        return _dbContext.BudgetPlans
+            .SingleOrDefaultAsync(
+                budgetPlan => budgetPlan.Id == id
+                    && budgetPlan.OwnerId == ownerId,
+                cancellationToken);
     }
 
     public async Task AddAsync(BudgetPlan budgetPlan, CancellationToken cancellationToken = default)

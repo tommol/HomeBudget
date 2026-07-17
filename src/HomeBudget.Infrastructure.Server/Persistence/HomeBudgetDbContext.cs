@@ -2,6 +2,7 @@ using HomeBudget.Application.Abstractions;
 using HomeBudget.Domain.Kernel;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
+using HomeBudget.Infrastructure.Server.Identity;
 using HomeBudget.Infrastructure.Server.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,11 @@ public sealed class HomeBudgetDbContext : DbContext, IUnitOfWork
 
         _domainEventDispatcher = domainEventDispatcher;
     }
+
+    /// <summary>
+    /// Gets the user accounts set.
+    /// </summary>
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
 
     /// <summary>
     /// Gets the budget plans set.

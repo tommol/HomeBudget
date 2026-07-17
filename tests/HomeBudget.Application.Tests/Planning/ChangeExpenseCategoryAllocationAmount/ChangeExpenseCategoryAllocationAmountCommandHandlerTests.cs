@@ -21,6 +21,7 @@ public sealed class ChangeExpenseCategoryAllocationAmountCommandHandlerTests
         var handler = new ChangeExpenseCategoryAllocationAmountCommandHandler(budgetPlanRepository);
 
         await handler.HandleAsync(new ChangeExpenseCategoryAllocationAmountCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             allocation.Id.Value,
             3500m));
@@ -46,6 +47,7 @@ public sealed class ChangeExpenseCategoryAllocationAmountCommandHandlerTests
 
         await handler.HandleAsync(
             new ChangeExpenseCategoryAllocationAmountCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 allocation.Id.Value,
                 3500m),

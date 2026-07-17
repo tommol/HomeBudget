@@ -28,7 +28,10 @@ public sealed class RemoveSavingContributionCommandHandler : ICommandHandler<Rem
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
 
         budgetPlan.RemoveSavingContribution(new SavingContributionId(command.SavingContributionId));
 

@@ -56,6 +56,18 @@ internal sealed class FakeBudgetPlanRepository : IBudgetPlanRepository
         return Task.FromResult<BudgetPlan?>(_budgetPlans.SingleOrDefault(budgetPlan => budgetPlan.Id.Equals(id)));
     }
 
+    public Task<BudgetPlan?> GetByIdAndOwnerIdAsync(
+        BudgetPlanId id,
+        OwnerId ownerId,
+        CancellationToken cancellationToken = default)
+    {
+        GetByIdCancellationTokens.Add(cancellationToken);
+
+        return Task.FromResult<BudgetPlan?>(_budgetPlans.SingleOrDefault(
+            budgetPlan => budgetPlan.Id.Equals(id)
+                && budgetPlan.OwnerId.Equals(ownerId)));
+    }
+
     public Task AddAsync(BudgetPlan budgetPlan, CancellationToken cancellationToken = default)
     {
         _budgetPlans.Add(budgetPlan);
@@ -90,5 +102,17 @@ internal sealed class FakeBudgetCategoryRepository : IBudgetCategoryRepository
         GetByIdCancellationTokens.Add(cancellationToken);
 
         return Task.FromResult<BudgetCategory?>(_categories.SingleOrDefault(category => category.Id.Equals(id)));
+    }
+
+    public Task<BudgetCategory?> GetByIdAndOwnerIdAsync(
+        BudgetCategoryId id,
+        OwnerId ownerId,
+        CancellationToken cancellationToken = default)
+    {
+        GetByIdCancellationTokens.Add(cancellationToken);
+
+        return Task.FromResult<BudgetCategory?>(_categories.SingleOrDefault(
+            category => category.Id.Equals(id)
+                && category.OwnerId.Equals(ownerId)));
     }
 }

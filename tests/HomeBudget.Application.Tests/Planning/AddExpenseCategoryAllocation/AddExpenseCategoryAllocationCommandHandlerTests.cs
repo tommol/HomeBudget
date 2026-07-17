@@ -19,6 +19,7 @@ public sealed class AddExpenseCategoryAllocationCommandHandlerTests
         var handler = new AddExpenseCategoryAllocationCommandHandler(budgetPlanRepository, categoryRepository);
 
         var allocationId = await handler.HandleAsync(new AddExpenseCategoryAllocationCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             category.Id.Value,
             3000m,
@@ -43,12 +44,35 @@ public sealed class AddExpenseCategoryAllocationCommandHandlerTests
 
         var exception = await Assert.ThrowsAsync<BudgetCategoryNotFoundException>(() => handler.HandleAsync(
             new AddExpenseCategoryAllocationCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 missingCategoryId,
                 3000m,
                 "fixed")));
 
         Assert.Equal(missingCategoryId, exception.BudgetCategoryId);
+        Assert.Empty(budgetPlan.ExpenseCategoryAllocations);
+        Assert.Empty(budgetPlanRepository.UpdatedBudgetPlans);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Throws_WhenCategoryBelongsToDifferentOwner()
+    {
+        var budgetPlan = CreateBudgetPlanAggregate();
+        var category = CreateExpenseCategory(new OwnerId(Guid.NewGuid()));
+        var budgetPlanRepository = new FakeBudgetPlanRepository(budgetPlan);
+        var categoryRepository = new FakeBudgetCategoryRepository(category);
+        var handler = new AddExpenseCategoryAllocationCommandHandler(budgetPlanRepository, categoryRepository);
+
+        var exception = await Assert.ThrowsAsync<BudgetCategoryNotFoundException>(() => handler.HandleAsync(
+            new AddExpenseCategoryAllocationCommand(
+                budgetPlan.OwnerId.Value,
+                budgetPlan.Id.Value,
+                category.Id.Value,
+                3000m,
+                "fixed")));
+
+        Assert.Equal(category.Id.Value, exception.BudgetCategoryId);
         Assert.Empty(budgetPlan.ExpenseCategoryAllocations);
         Assert.Empty(budgetPlanRepository.UpdatedBudgetPlans);
     }
@@ -64,6 +88,7 @@ public sealed class AddExpenseCategoryAllocationCommandHandlerTests
 
         var exception = await Assert.ThrowsAsync<ArgumentException>(() => handler.HandleAsync(
             new AddExpenseCategoryAllocationCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 category.Id.Value,
                 3000m,

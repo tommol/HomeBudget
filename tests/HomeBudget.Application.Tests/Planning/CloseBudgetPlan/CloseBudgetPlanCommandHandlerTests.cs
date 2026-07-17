@@ -14,7 +14,7 @@ public sealed class CloseBudgetPlanCommandHandlerTests
         var budgetPlanRepository = new FakeBudgetPlanRepository(budgetPlan);
         var handler = new CloseBudgetPlanCommandHandler(budgetPlanRepository);
 
-        await handler.HandleAsync(new CloseBudgetPlanCommand(budgetPlan.Id.Value));
+        await handler.HandleAsync(new CloseBudgetPlanCommand(budgetPlan.OwnerId.Value, budgetPlan.Id.Value));
 
         Assert.Equal(BudgetPlanStatus.Closed, budgetPlan.Status);
         Assert.Contains(budgetPlan, budgetPlanRepository.UpdatedBudgetPlans);

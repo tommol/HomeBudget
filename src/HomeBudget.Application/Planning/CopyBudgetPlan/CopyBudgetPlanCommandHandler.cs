@@ -29,9 +29,10 @@ public sealed class CopyBudgetPlanCommandHandler : ICommandHandler<CopyBudgetPla
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var sourceBudgetPlanId = new BudgetPlanId(command.SourceBudgetPlanId);
-        var sourceBudgetPlan = await _budgetPlanRepository.GetByIdAsync(sourceBudgetPlanId, cancellationToken)
-            ?? throw new BudgetPlanNotFoundException(command.SourceBudgetPlanId);
+        var sourceBudgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.SourceBudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
 
         var targetPeriod = new BudgetPeriod(command.Year, command.Month);
         var budgetPlan = sourceBudgetPlan.CopyTo(

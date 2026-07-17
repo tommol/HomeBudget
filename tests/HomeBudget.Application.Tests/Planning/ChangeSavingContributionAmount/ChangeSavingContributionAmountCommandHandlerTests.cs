@@ -20,6 +20,7 @@ public sealed class ChangeSavingContributionAmountCommandHandlerTests
         var handler = new ChangeSavingContributionAmountCommandHandler(budgetPlanRepository);
 
         await handler.HandleAsync(new ChangeSavingContributionAmountCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             contribution.Id.Value,
             750m));

@@ -15,7 +15,7 @@ public sealed class ActivateBudgetPlanCommandHandlerTests
         var budgetPlanRepository = new FakeBudgetPlanRepository(budgetPlan);
         var handler = new ActivateBudgetPlanCommandHandler(budgetPlanRepository);
 
-        await handler.HandleAsync(new ActivateBudgetPlanCommand(budgetPlan.Id.Value));
+        await handler.HandleAsync(new ActivateBudgetPlanCommand(budgetPlan.OwnerId.Value, budgetPlan.Id.Value));
 
         Assert.Equal(BudgetPlanStatus.Active, budgetPlan.Status);
         Assert.Contains(budgetPlan, budgetPlanRepository.UpdatedBudgetPlans);
@@ -29,9 +29,24 @@ public sealed class ActivateBudgetPlanCommandHandlerTests
         var handler = new ActivateBudgetPlanCommandHandler(budgetPlanRepository);
 
         var exception = await Assert.ThrowsAsync<BudgetPlanNotFoundException>(() => handler.HandleAsync(
-            new ActivateBudgetPlanCommand(missingBudgetPlanId)));
+            new ActivateBudgetPlanCommand(Guid.NewGuid(), missingBudgetPlanId)));
 
         Assert.Equal(missingBudgetPlanId, exception.BudgetPlanId);
+        Assert.Empty(budgetPlanRepository.UpdatedBudgetPlans);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Throws_WhenBudgetPlanBelongsToDifferentOwner()
+    {
+        var budgetPlan = CreateBudgetPlanAggregate();
+        var budgetPlanRepository = new FakeBudgetPlanRepository(budgetPlan);
+        var handler = new ActivateBudgetPlanCommandHandler(budgetPlanRepository);
+
+        var exception = await Assert.ThrowsAsync<BudgetPlanNotFoundException>(() => handler.HandleAsync(
+            new ActivateBudgetPlanCommand(Guid.NewGuid(), budgetPlan.Id.Value)));
+
+        Assert.Equal(budgetPlan.Id.Value, exception.BudgetPlanId);
+        Assert.Equal(BudgetPlanStatus.Draft, budgetPlan.Status);
         Assert.Empty(budgetPlanRepository.UpdatedBudgetPlans);
     }
 }

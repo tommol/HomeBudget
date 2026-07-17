@@ -18,6 +18,7 @@ public sealed class AddSavingContributionCommandHandlerTests
         var handler = new AddSavingContributionCommandHandler(budgetPlanRepository, categoryRepository);
 
         var contributionId = await handler.HandleAsync(new AddSavingContributionCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             category.Id.Value,
             500m));
@@ -40,6 +41,7 @@ public sealed class AddSavingContributionCommandHandlerTests
 
         var exception = await Assert.ThrowsAsync<BudgetCategoryNotFoundException>(() => handler.HandleAsync(
             new AddSavingContributionCommand(
+                budgetPlan.OwnerId.Value,
                 budgetPlan.Id.Value,
                 missingCategoryId,
                 500m)));

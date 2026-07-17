@@ -30,7 +30,10 @@ public sealed class ChangeSavingContributionAmountCommandHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
 
         budgetPlan.ChangeSavingContributionAmount(
             new SavingContributionId(command.SavingContributionId),

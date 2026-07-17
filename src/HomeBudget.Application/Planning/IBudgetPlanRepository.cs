@@ -1,4 +1,5 @@
 using HomeBudget.Domain.Planning;
+using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Application.Planning;
 
@@ -14,6 +15,18 @@ public interface IBudgetPlanRepository
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The matching budget plan, or <c>null</c> when it was not found.</returns>
     Task<BudgetPlan?> GetByIdAsync(BudgetPlanId id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a budget plan by its identifier and owner.
+    /// </summary>
+    /// <param name="id">The budget plan identifier.</param>
+    /// <param name="ownerId">The budget plan owner identifier.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The matching budget plan, or <c>null</c> when it was not found for the owner.</returns>
+    Task<BudgetPlan?> GetByIdAndOwnerIdAsync(
+        BudgetPlanId id,
+        OwnerId ownerId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a budget plan to the repository.

@@ -29,7 +29,10 @@ public sealed class ChangeExpenseCategoryAllocationFlexibilityCommandHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
         var flexibility = PlanningCommandParsers.ParseCategoryAllocationFlexibility(
             command.Flexibility,
             nameof(command.Flexibility));

@@ -1,5 +1,6 @@
 using HomeBudget.Application.Abstractions;
 using HomeBudget.Application.Planning;
+using HomeBudget.Infrastructure.Server.Identity;
 using HomeBudget.Infrastructure.Server.DomainEvents;
 using HomeBudget.Infrastructure.Server.Persistence;
 using HomeBudget.Infrastructure.Server.Persistence.Repositories;
@@ -49,6 +50,7 @@ public static class DependencyInjection
         services.AddDbContext<HomeBudgetDbContext>(configureDbContext);
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<HomeBudgetDbContext>());
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.AddScoped<IUserAccountRepository, EfUserAccountRepository>();
         services.AddScoped<IBudgetPlanRepository, EfBudgetPlanRepository>();
         services.AddScoped<IBudgetCategoryRepository, EfBudgetCategoryRepository>();
 

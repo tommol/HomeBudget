@@ -29,7 +29,10 @@ public sealed class RemoveExpenseCategoryAllocationCommandHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
 
         budgetPlan.RemoveExpenseCategoryAllocation(new CategoryAllocationId(command.CategoryAllocationId));
 

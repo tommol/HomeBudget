@@ -35,8 +35,14 @@ public sealed class AddPlannedIncomeCommandHandler : ICommandHandler<AddPlannedI
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(command.BudgetPlanId, cancellationToken);
-        var category = await _budgetCategoryRepository.GetRequiredByIdAsync(command.CategoryId, cancellationToken);
+        var budgetPlan = await _budgetPlanRepository.GetRequiredByIdAsync(
+            command.BudgetPlanId,
+            command.OwnerId,
+            cancellationToken);
+        var category = await _budgetCategoryRepository.GetRequiredByIdAsync(
+            command.CategoryId,
+            command.OwnerId,
+            cancellationToken);
         var amount = new Money(command.Amount, new Currency(command.CurrencyCode));
         var convertedAmount = command.ConvertedAmount is null
             ? null

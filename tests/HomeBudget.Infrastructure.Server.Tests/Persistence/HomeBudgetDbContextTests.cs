@@ -1,4 +1,5 @@
 using HomeBudget.Application.Abstractions;
+using HomeBudget.Application.Planning;
 using HomeBudget.Domain.Kernel;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
@@ -137,6 +138,38 @@ public sealed class HomeBudgetDbContextTests
 
         Assert.Empty(reloadedBudgetPlan.PlannedIncomes);
         Assert.Empty(await verificationDbContext.OutboxMessages.ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task Repositories_ReturnOnlyEntitiesMatchingOwner()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var serviceProvider = CreateServiceProvider(connection, _ => { });
+
+        using var scope = serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        var otherOwnerId = new OwnerId(Guid.NewGuid());
+        var budgetPlan = CreateBudgetPlan(ownerId);
+        var otherBudgetPlan = CreateBudgetPlan(otherOwnerId);
+        var category = CreateCategory(ownerId, BudgetCategoryType.Expense);
+        var otherCategory = CreateCategory(otherOwnerId, BudgetCategoryType.Expense);
+
+        dbContext.BudgetPlans.AddRange(budgetPlan, otherBudgetPlan);
+        dbContext.BudgetCategories.AddRange(category, otherCategory);
+        await dbContext.SaveChangesAsync();
+
+        var budgetPlanRepository = scope.ServiceProvider.GetRequiredService<IBudgetPlanRepository>();
+        var categoryRepository = scope.ServiceProvider.GetRequiredService<IBudgetCategoryRepository>();
+
+        Assert.NotNull(await budgetPlanRepository.GetByIdAndOwnerIdAsync(budgetPlan.Id, ownerId));
+        Assert.Null(await budgetPlanRepository.GetByIdAndOwnerIdAsync(budgetPlan.Id, otherOwnerId));
+        Assert.NotNull(await categoryRepository.GetByIdAndOwnerIdAsync(category.Id, ownerId));
+        Assert.Null(await categoryRepository.GetByIdAndOwnerIdAsync(category.Id, otherOwnerId));
     }
 
     private static DbContextOptions<HomeBudgetDbContext> CreateOptions(SqliteConnection connection)

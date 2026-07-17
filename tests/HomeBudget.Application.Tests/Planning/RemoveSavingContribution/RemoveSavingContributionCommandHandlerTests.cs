@@ -20,6 +20,7 @@ public sealed class RemoveSavingContributionCommandHandlerTests
         var handler = new RemoveSavingContributionCommandHandler(budgetPlanRepository);
 
         await handler.HandleAsync(new RemoveSavingContributionCommand(
+            budgetPlan.OwnerId.Value,
             budgetPlan.Id.Value,
             contribution.Id.Value));
 

@@ -22,4 +22,19 @@ internal sealed class EfBudgetCategoryRepository : IBudgetCategoryRepository
         return _dbContext.BudgetCategories
             .SingleOrDefaultAsync(category => category.Id == id, cancellationToken);
     }
+
+    public Task<BudgetCategory?> GetByIdAndOwnerIdAsync(
+        BudgetCategoryId id,
+        OwnerId ownerId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(ownerId);
+
+        return _dbContext.BudgetCategories
+            .SingleOrDefaultAsync(
+                category => category.Id == id
+                    && category.OwnerId == ownerId,
+                cancellationToken);
+    }
 }
