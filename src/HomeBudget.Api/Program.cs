@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using HomeBudget.Api.Auth;
+using HomeBudget.Api.Endpoints.Execution;
 using HomeBudget.Api.Endpoints.Planning;
 using HomeBudget.Api.OpenApi;
 using HomeBudget.Application.Abstractions;
@@ -134,6 +135,7 @@ var api = app.MapGroup("/api/v{version:apiVersion}")
     .RequireAuthorization();
 
 api.MapPlanningEndpoints();
+api.MapExecutionEndpoints();
 
 app.Run();
 

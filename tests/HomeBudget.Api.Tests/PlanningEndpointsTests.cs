@@ -1,4 +1,6 @@
+using HomeBudget.Contracts.Execution;
 using HomeBudget.Contracts.Planning;
+using HomeBudget.Domain.Execution;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
 using HomeBudget.Infrastructure.Server.Identity;
@@ -315,6 +317,277 @@ public sealed class PlanningEndpointsTests
         Assert.Single(copiedBudgetPlan.SavingContributions);
     }
 
+    [Fact]
+    public async Task IncomeEndpoints_CreateUpdateAndRemoveIncome()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetId = await factory.SeedBudgetAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Income);
+        var newCategoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Income);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var createResponse = await client.PostAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/incomes",
+            new AddIncomeRequest(
+                categoryId,
+                "Salary",
+                5000m,
+                "PLN",
+                new DateOnly(2026, 7, 10)));
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createBody = await createResponse.Content.ReadFromJsonAsync<AddIncomeResponse>();
+        Assert.NotNull(createBody);
+        var incomeId = createBody.Id;
+
+        var changeAmountResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/incomes/{incomeId}/amount",
+            new ChangeIncomeAmountRequest(5500m, "PLN"));
+        var changeCategoryResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/incomes/{incomeId}/category",
+            new ChangeIncomeCategoryRequest(newCategoryId));
+        var changeTitleResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/incomes/{incomeId}/title",
+            new ChangeIncomeTitleRequest("Updated salary"));
+        var changeDateResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/incomes/{incomeId}/occurred-date",
+            new ChangeIncomeOccurredDateRequest(new DateOnly(2026, 7, 12)));
+
+        Assert.Equal(HttpStatusCode.NoContent, changeAmountResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeCategoryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeTitleResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeDateResponse.StatusCode);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budget = await dbContext.Budgets.SingleAsync();
+            var income = Assert.Single(budget.Incomes);
+
+            Assert.Equal(incomeId, income.Id.Value);
+            Assert.Equal(newCategoryId, income.CategoryId.Value);
+            Assert.Equal("Updated salary", income.Title);
+            Assert.Equal(5500m, income.Amount.Amount);
+            Assert.Equal(new DateOnly(2026, 7, 12), income.OccurredDate);
+        }
+
+        using var deleteRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/execution/budgets/{budgetId}/incomes/{incomeId}")
+        {
+            Content = JsonContent.Create(new RemoveIncomeRequest("Duplicate"))
+        };
+        var deleteResponse = await client.SendAsync(deleteRequest);
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        await using var verificationScope = factory.Services.CreateAsyncScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var reloadedBudget = await verificationDbContext.Budgets.SingleAsync();
+        var removedIncome = Assert.Single(reloadedBudget.Incomes);
+
+        Assert.True(removedIncome.IsRemoved);
+        Assert.Equal("Duplicate", removedIncome.RemovalReason);
+    }
+
+    [Fact]
+    public async Task ExpenseEndpoints_CreateUpdateAndRemoveExpense()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetId = await factory.SeedBudgetAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Expense);
+        var newCategoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Expense);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var createResponse = await client.PostAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/expenses",
+            new AddExpenseRequest(
+                categoryId,
+                "Groceries",
+                200m,
+                "PLN",
+                new DateOnly(2026, 7, 5)));
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createBody = await createResponse.Content.ReadFromJsonAsync<AddExpenseResponse>();
+        Assert.NotNull(createBody);
+        var expenseId = createBody.Id;
+
+        var changeAmountResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/expenses/{expenseId}/amount",
+            new ChangeExpenseAmountRequest(250m, "PLN"));
+        var changeCategoryResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/expenses/{expenseId}/category",
+            new ChangeExpenseCategoryRequest(newCategoryId));
+        var changeTitleResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/expenses/{expenseId}/title",
+            new ChangeExpenseTitleRequest("Updated groceries"));
+        var changeDateResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/expenses/{expenseId}/occurred-date",
+            new ChangeExpenseOccurredDateRequest(new DateOnly(2026, 7, 6)));
+
+        Assert.Equal(HttpStatusCode.NoContent, changeAmountResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeCategoryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeTitleResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeDateResponse.StatusCode);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budget = await dbContext.Budgets.SingleAsync();
+            var expense = Assert.Single(budget.Expenses);
+
+            Assert.Equal(expenseId, expense.Id.Value);
+            Assert.Equal(newCategoryId, expense.CategoryId.Value);
+            Assert.Equal("Updated groceries", expense.Title);
+            Assert.Equal(250m, expense.Amount.Amount);
+            Assert.Equal(new DateOnly(2026, 7, 6), expense.OccurredDate);
+        }
+
+        using var deleteRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/execution/budgets/{budgetId}/expenses/{expenseId}")
+        {
+            Content = JsonContent.Create(new RemoveExpenseRequest("Duplicate"))
+        };
+        var deleteResponse = await client.SendAsync(deleteRequest);
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        await using var verificationScope = factory.Services.CreateAsyncScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var reloadedBudget = await verificationDbContext.Budgets.SingleAsync();
+        var removedExpense = Assert.Single(reloadedBudget.Expenses);
+
+        Assert.True(removedExpense.IsRemoved);
+        Assert.Equal("Duplicate", removedExpense.RemovalReason);
+    }
+
+    [Fact]
+    public async Task SavingEndpoints_CreateUpdateAndRemoveSaving()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetId = await factory.SeedBudgetAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Saving);
+        var newCategoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Saving);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var createResponse = await client.PostAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/savings",
+            new AddSavingRequest(
+                categoryId,
+                "Emergency fund",
+                1000m,
+                "PLN",
+                new DateOnly(2026, 7, 20)));
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createBody = await createResponse.Content.ReadFromJsonAsync<AddSavingResponse>();
+        Assert.NotNull(createBody);
+        var savingId = createBody.Id;
+
+        var changeAmountResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/savings/{savingId}/amount",
+            new ChangeSavingAmountRequest(1200m, "PLN"));
+        var changeCategoryResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/savings/{savingId}/category",
+            new ChangeSavingCategoryRequest(newCategoryId));
+        var changeTitleResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/savings/{savingId}/title",
+            new ChangeSavingTitleRequest("Updated emergency fund"));
+        var changeDateResponse = await client.PatchAsJsonAsync(
+            $"/api/v1/execution/budgets/{budgetId}/savings/{savingId}/occurred-date",
+            new ChangeSavingOccurredDateRequest(new DateOnly(2026, 7, 21)));
+
+        Assert.Equal(HttpStatusCode.NoContent, changeAmountResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeCategoryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeTitleResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, changeDateResponse.StatusCode);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budget = await dbContext.Budgets.SingleAsync();
+            var saving = Assert.Single(budget.Savings);
+
+            Assert.Equal(savingId, saving.Id.Value);
+            Assert.Equal(newCategoryId, saving.CategoryId.Value);
+            Assert.Equal("Updated emergency fund", saving.Title);
+            Assert.Equal(1200m, saving.Amount.Amount);
+            Assert.Equal(new DateOnly(2026, 7, 21), saving.OccurredDate);
+        }
+
+        using var deleteRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/execution/budgets/{budgetId}/savings/{savingId}")
+        {
+            Content = JsonContent.Create(new RemoveSavingRequest("Duplicate"))
+        };
+        var deleteResponse = await client.SendAsync(deleteRequest);
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        await using var verificationScope = factory.Services.CreateAsyncScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var reloadedBudget = await verificationDbContext.Budgets.SingleAsync();
+        var removedSaving = Assert.Single(reloadedBudget.Savings);
+
+        Assert.True(removedSaving.IsRemoved);
+        Assert.Equal("Duplicate", removedSaving.RemovalReason);
+    }
+
+    [Fact]
+    public async Task CloseBudget_WithExistingBudget_ClosesBudget()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var budgetId = await factory.SeedBudgetAsync(ownerId);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.PostAsync(
+            $"/api/v1/execution/budgets/{budgetId}/close",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        var budget = await dbContext.Budgets.SingleAsync();
+
+        Assert.Equal(BudgetStatus.Closed, budget.Status);
+    }
+
+    [Fact]
+    public async Task AddIncome_WithMissingBudget_ReturnsNotFound()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Income);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/execution/budgets/{Guid.NewGuid()}/incomes",
+            new AddIncomeRequest(
+                categoryId,
+                "Salary",
+                5000m,
+                "PLN",
+                new DateOnly(2026, 7, 10)));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     [Theory]
     [MemberData(nameof(InvalidCreateBudgetPlanRequests))]
     public async Task CreateBudgetPlan_WithInvalidRequest_ReturnsBadRequest(CreateBudgetPlanRequest request)
@@ -345,6 +618,10 @@ public sealed class PlanningEndpointsTests
         Assert.Contains("/api/v1/planning/budget-plans", document, StringComparison.Ordinal);
         Assert.Contains("/api/v1/planning/budget-plans/{budgetPlanId}/planned-incomes", document, StringComparison.Ordinal);
         Assert.Contains("/api/v1/planning/budget-plans/{budgetPlanId}/saving-contributions", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/execution/budgets/{budgetId}/incomes", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/execution/budgets/{budgetId}/expenses", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/execution/budgets/{budgetId}/savings", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/execution/budgets/{budgetId}/close", document, StringComparison.Ordinal);
         Assert.Contains("\"Bearer\"", document, StringComparison.Ordinal);
         Assert.Contains("\"bearer\"", document, StringComparison.OrdinalIgnoreCase);
     }
@@ -437,6 +714,27 @@ public sealed class PlanningEndpointsTests
             await dbContext.SaveChangesAsync();
 
             return budgetPlan.Id.Value;
+        }
+
+        public async Task<Guid> SeedBudgetAsync(
+            Guid ownerId,
+            int year = 2026,
+            int month = 7,
+            string currencyCode = "PLN")
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budget = new Budget(
+                new BudgetId(Guid.NewGuid()),
+                new OwnerId(ownerId),
+                new BudgetPeriod(year, month),
+                new Currency(currencyCode));
+
+            await dbContext.Database.EnsureCreatedAsync();
+            dbContext.Budgets.Add(budget);
+            await dbContext.SaveChangesAsync();
+
+            return budget.Id.Value;
         }
 
         public async Task<Guid> SeedBudgetCategoryAsync(Guid ownerId, BudgetCategoryType type)
