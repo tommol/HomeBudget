@@ -199,6 +199,7 @@ public sealed class HomeBudgetDbContextTests
         var budget = await dbContext.Budgets.SingleAsync();
 
         Assert.Equal(new BudgetId(budgetPlan.Id.Value), budget.Id);
+        Assert.Equal(budgetPlan.Id, budget.SourceBudgetPlanId);
         Assert.Equal(budgetPlan.OwnerId, budget.OwnerId);
         Assert.Equal(budgetPlan.Period, budget.Period);
         Assert.Equal(budgetPlan.DefaultCurrency, budget.DefaultCurrency);

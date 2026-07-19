@@ -1,5 +1,6 @@
 using HomeBudget.Application.Execution;
 using HomeBudget.Domain.Execution;
+using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Application.Tests.Execution;
@@ -10,12 +11,14 @@ internal static class ExecutionTestData
         BudgetPeriod? period = null,
         OwnerId? ownerId = null,
         Currency? defaultCurrency = null,
-        BudgetId? budgetId = null)
+        BudgetId? budgetId = null,
+        BudgetPlanId? sourceBudgetPlanId = null)
         => new(
             budgetId ?? new BudgetId(Guid.NewGuid()),
             ownerId ?? new OwnerId(Guid.NewGuid()),
             period ?? new BudgetPeriod(2026, 7),
-            defaultCurrency ?? Currency.PLN);
+            defaultCurrency ?? Currency.PLN,
+            sourceBudgetPlanId ?? new BudgetPlanId(Guid.NewGuid()));
 
     public static BudgetCategory CreateExpenseCategory(OwnerId ownerId)
         => CreateCategory(ownerId, BudgetCategoryType.Expense);

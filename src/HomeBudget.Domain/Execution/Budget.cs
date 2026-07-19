@@ -1,4 +1,5 @@
 using HomeBudget.Domain.Kernel;
+using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Domain.Execution;
@@ -15,6 +16,7 @@ public sealed class Budget : AggregateRoot<BudgetId>
     private Budget()
     {
         OwnerId = null!;
+        SourceBudgetPlanId = null!;
         Period = null!;
         DefaultCurrency = null!;
         TotalIncome = null!;
@@ -30,18 +32,22 @@ public sealed class Budget : AggregateRoot<BudgetId>
     /// <param name="ownerId">The identifier of the owner of the budget.</param>
     /// <param name="period">The period covered by the budget.</param>
     /// <param name="defaultCurrency">The default currency used for totals.</param>
+    /// <param name="sourceBudgetPlanId">The identifier of the budget plan this budget was created from.</param>
     public Budget(
         BudgetId id,
         OwnerId ownerId,
         BudgetPeriod period,
-        Currency defaultCurrency)
+        Currency defaultCurrency,
+        BudgetPlanId sourceBudgetPlanId)
         : base(id)
     {
         ArgumentNullException.ThrowIfNull(ownerId);
         ArgumentNullException.ThrowIfNull(period);
         ArgumentNullException.ThrowIfNull(defaultCurrency);
+        ArgumentNullException.ThrowIfNull(sourceBudgetPlanId);
 
         OwnerId = ownerId;
+        SourceBudgetPlanId = sourceBudgetPlanId;
         Period = period;
         DefaultCurrency = defaultCurrency;
         Status = BudgetStatus.Active;
@@ -55,6 +61,11 @@ public sealed class Budget : AggregateRoot<BudgetId>
     /// Gets the identifier of the owner of the budget.
     /// </summary>
     public OwnerId OwnerId { get; private set; }
+
+    /// <summary>
+    /// Gets the identifier of the budget plan this budget was created from.
+    /// </summary>
+    public BudgetPlanId SourceBudgetPlanId { get; private set; }
 
     /// <summary>
     /// Gets the period covered by the budget.

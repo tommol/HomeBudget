@@ -1,4 +1,5 @@
 using HomeBudget.Domain.Execution;
+using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
 using HomeBudget.Infrastructure.Server.Persistence.Configurations.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,11 @@ internal sealed class BudgetConfiguration : IEntityTypeConfiguration<Budget>
             .HasConversion(
                 id => id.Value,
                 value => new OwnerId(value));
+
+        builder.Property(budget => budget.SourceBudgetPlanId)
+            .HasConversion(
+                id => id.Value,
+                value => new BudgetPlanId(value));
 
         builder.Property(budget => budget.Status)
             .HasConversion<string>()
@@ -51,6 +57,9 @@ internal sealed class BudgetConfiguration : IEntityTypeConfiguration<Budget>
         builder.OwnsOne(budget => budget.TotalExpenses, money => money.ConfigureMoney("TotalExpenses"));
         builder.OwnsOne(budget => budget.TotalSavings, money => money.ConfigureMoney("TotalSavings"));
         builder.OwnsOne(budget => budget.ActualFinancialResult, money => money.ConfigureMoney("ActualFinancialResult"));
+
+        builder.HasIndex(budget => budget.SourceBudgetPlanId)
+            .IsUnique();
 
         builder.OwnsMany(budget => budget.Incomes, incomes =>
         {

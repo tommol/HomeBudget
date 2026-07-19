@@ -25,6 +25,7 @@ public sealed class CreateBudgetFromApprovedPlanHandlerTests
 
         var budget = Assert.Single(budgetRepository.AddedBudgets);
         Assert.Equal(new BudgetId(budgetPlan.Id.Value), budget.Id);
+        Assert.Equal(budgetPlan.Id, budget.SourceBudgetPlanId);
         Assert.Equal(budgetPlan.OwnerId, budget.OwnerId);
         Assert.Equal(budgetPlan.Period, budget.Period);
         Assert.Equal(budgetPlan.DefaultCurrency, budget.DefaultCurrency);
@@ -55,7 +56,8 @@ public sealed class CreateBudgetFromApprovedPlanHandlerTests
         var budgetPlan = CreateBudgetPlanAggregate();
         var existingBudget = ExecutionTestData.CreateBudgetAggregate(
             ownerId: budgetPlan.OwnerId,
-            budgetId: new BudgetId(budgetPlan.Id.Value));
+            budgetId: new BudgetId(budgetPlan.Id.Value),
+            sourceBudgetPlanId: budgetPlan.Id);
         var budgetPlanRepository = new FakeBudgetPlanRepository(budgetPlan);
         var budgetRepository = new FakeBudgetRepository(existingBudget);
         var handler = new CreateBudgetFromApprovedPlanHandler(budgetPlanRepository, budgetRepository);

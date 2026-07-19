@@ -1,4 +1,5 @@
 using HomeBudget.Domain.Execution;
+using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
 
 namespace HomeBudget.Domain.Tests.Execution;
@@ -10,13 +11,15 @@ public sealed class BudgetTests
     {
         var id = new BudgetId(Guid.NewGuid());
         var ownerId = new OwnerId(Guid.NewGuid());
+        var sourceBudgetPlanId = new BudgetPlanId(Guid.NewGuid());
         var period = new BudgetPeriod(2026, 7);
         var defaultCurrency = Currency.PLN;
 
-        var budget = new Budget(id, ownerId, period, defaultCurrency);
+        var budget = new Budget(id, ownerId, period, defaultCurrency, sourceBudgetPlanId);
 
         Assert.Equal(id, budget.Id);
         Assert.Equal(ownerId, budget.OwnerId);
+        Assert.Equal(sourceBudgetPlanId, budget.SourceBudgetPlanId);
         Assert.Equal(period, budget.Period);
         Assert.Equal(defaultCurrency, budget.DefaultCurrency);
         Assert.Equal(BudgetStatus.Active, budget.Status);
@@ -1026,7 +1029,8 @@ public sealed class BudgetTests
             new BudgetId(Guid.NewGuid()),
             new OwnerId(Guid.NewGuid()),
             new BudgetPeriod(2026, 7),
-            Currency.PLN);
+            Currency.PLN,
+            new BudgetPlanId(Guid.NewGuid()));
 
     private static BudgetCategory CreateIncomeCategory(OwnerId ownerId)
         => CreateCategory(ownerId, BudgetCategoryType.Income);

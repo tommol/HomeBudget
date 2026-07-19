@@ -728,7 +728,8 @@ public sealed class PlanningEndpointsTests
                 new BudgetId(Guid.NewGuid()),
                 new OwnerId(ownerId),
                 new BudgetPeriod(year, month),
-                new Currency(currencyCode));
+                new Currency(currencyCode),
+                new BudgetPlanId(Guid.NewGuid()));
 
             await dbContext.Database.EnsureCreatedAsync();
             dbContext.Budgets.Add(budget);

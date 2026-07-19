@@ -57,7 +57,8 @@ public sealed class CreateBudgetFromApprovedPlanHandler
             budgetId,
             budgetPlan.OwnerId,
             budgetPlan.Period,
-            budgetPlan.DefaultCurrency);
+            budgetPlan.DefaultCurrency,
+            budgetPlan.Id);
 
         await _budgetRepository.AddAsync(budget, cancellationToken);
     }

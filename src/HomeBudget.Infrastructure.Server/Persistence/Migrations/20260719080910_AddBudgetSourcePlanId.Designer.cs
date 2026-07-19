@@ -3,6 +3,7 @@ using System;
 using HomeBudget.Infrastructure.Server.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HomeBudget.Infrastructure.Server.Persistence.Migrations
 {
     [DbContext(typeof(HomeBudgetDbContext))]
-    partial class HomeBudgetDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260719080910_AddBudgetSourcePlanId")]
+    partial class AddBudgetSourcePlanId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
