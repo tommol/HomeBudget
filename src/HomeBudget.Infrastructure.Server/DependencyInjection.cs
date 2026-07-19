@@ -2,6 +2,7 @@ using HomeBudget.Application.Abstractions;
 using HomeBudget.Application.Execution;
 using HomeBudget.Application.Execution.CreateBudgetFromApprovedPlan;
 using HomeBudget.Application.Planning;
+using HomeBudget.Application.Reporting;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Infrastructure.Server.Identity;
 using HomeBudget.Infrastructure.Server.DomainEvents;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IBudgetRepository, EfBudgetRepository>();
         services.AddScoped<IBudgetPlanRepository, EfBudgetPlanRepository>();
         services.AddScoped<IBudgetCategoryRepository, EfBudgetCategoryRepository>();
+        services.AddScoped<IBudgetBalanceReadRepository, EfBudgetBalanceReadRepository>();
 
         return services;
     }

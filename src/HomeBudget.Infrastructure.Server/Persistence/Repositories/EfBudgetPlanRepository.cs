@@ -39,6 +39,22 @@ internal sealed class EfBudgetPlanRepository : IBudgetPlanRepository
                 cancellationToken);
     }
 
+    public Task<bool> ExistsByOwnerIdAndPeriodAsync(
+        OwnerId ownerId,
+        BudgetPeriod period,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ownerId);
+        ArgumentNullException.ThrowIfNull(period);
+
+        return _dbContext.BudgetPlans
+            .AnyAsync(
+                budgetPlan => budgetPlan.OwnerId == ownerId
+                    && EF.Property<int>(budgetPlan, "_periodYear") == period.Year
+                    && EF.Property<int>(budgetPlan, "_periodMonth") == period.Month,
+                cancellationToken);
+    }
+
     public async Task AddAsync(BudgetPlan budgetPlan, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(budgetPlan);

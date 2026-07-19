@@ -12,12 +12,13 @@ public sealed class Budget : AggregateRoot<BudgetId>
     private readonly List<Income> _incomes = [];
     private readonly List<Expense> _expenses = [];
     private readonly List<Saving> _savings = [];
+    private int _periodYear = 1;
+    private int _periodMonth = 1;
 
     private Budget()
     {
         OwnerId = null!;
         SourceBudgetPlanId = null!;
-        Period = null!;
         DefaultCurrency = null!;
         TotalIncome = null!;
         TotalExpenses = null!;
@@ -48,7 +49,7 @@ public sealed class Budget : AggregateRoot<BudgetId>
 
         OwnerId = ownerId;
         SourceBudgetPlanId = sourceBudgetPlanId;
-        Period = period;
+        SetPeriod(period);
         DefaultCurrency = defaultCurrency;
         Status = BudgetStatus.Active;
         TotalIncome = Money.Zero(defaultCurrency);
@@ -70,7 +71,7 @@ public sealed class Budget : AggregateRoot<BudgetId>
     /// <summary>
     /// Gets the period covered by the budget.
     /// </summary>
-    public BudgetPeriod Period { get; private set; }
+    public BudgetPeriod Period => new(_periodYear, _periodMonth);
 
     /// <summary>
     /// Gets the default currency used by the budget.
@@ -673,6 +674,14 @@ public sealed class Budget : AggregateRoot<BudgetId>
         {
             throw new InvalidOperationException("Only active budgets can be modified.");
         }
+    }
+
+    private void SetPeriod(BudgetPeriod period)
+    {
+        ArgumentNullException.ThrowIfNull(period);
+
+        _periodYear = period.Year;
+        _periodMonth = period.Month;
     }
 
     private void EnsureDateIsInsidePeriod(DateOnly occurredDate)

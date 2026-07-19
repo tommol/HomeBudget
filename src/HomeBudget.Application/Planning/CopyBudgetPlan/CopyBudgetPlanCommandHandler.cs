@@ -35,6 +35,15 @@ public sealed class CopyBudgetPlanCommandHandler : ICommandHandler<CopyBudgetPla
             cancellationToken);
 
         var targetPeriod = new BudgetPeriod(command.Year, command.Month);
+
+        if (await _budgetPlanRepository.ExistsByOwnerIdAndPeriodAsync(
+                sourceBudgetPlan.OwnerId,
+                targetPeriod,
+                cancellationToken))
+        {
+            throw new InvalidOperationException("Budget plan already exists for this owner and period.");
+        }
+
         var budgetPlan = sourceBudgetPlan.CopyTo(
             new BudgetPlanId(Guid.NewGuid()),
             targetPeriod,

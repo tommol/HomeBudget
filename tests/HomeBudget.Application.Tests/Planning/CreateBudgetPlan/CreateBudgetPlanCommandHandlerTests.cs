@@ -40,4 +40,22 @@ public sealed class CreateBudgetPlanCommandHandlerTests
 
         Assert.Equal(cancellationToken, Assert.Single(repository.AddCancellationTokens));
     }
+
+    [Fact]
+    public async Task HandleAsync_Throws_WhenBudgetPlanAlreadyExistsForOwnerAndPeriod()
+    {
+        var ownerId = Guid.NewGuid();
+        var existingBudgetPlan = new BudgetPlan(
+            new BudgetPlanId(Guid.NewGuid()),
+            new OwnerId(ownerId),
+            new BudgetPeriod(2026, 7),
+            Currency.PLN);
+        var repository = new FakeBudgetPlanRepository(existingBudgetPlan);
+        var handler = new CreateBudgetPlanCommandHandler(repository);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.HandleAsync(new CreateBudgetPlanCommand(ownerId, 2026, 7, "PLN")));
+
+        Assert.Empty(repository.AddedBudgetPlans);
+    }
 }

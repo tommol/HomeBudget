@@ -1,5 +1,6 @@
 using HomeBudget.Contracts.Execution;
 using HomeBudget.Contracts.Planning;
+using HomeBudget.Contracts.Reporting;
 using HomeBudget.Domain.Execution;
 using HomeBudget.Domain.Planning;
 using HomeBudget.Domain.Shared;
@@ -568,6 +569,126 @@ public sealed class PlanningEndpointsTests
     }
 
     [Fact]
+    public async Task GetBudgetBalanceByPeriod_WithPlanOnlyBudget_ReturnsBalance()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        await factory.SeedBudgetPlanAsync(ownerId);
+        var categoryId = await factory.SeedBudgetCategoryAsync(ownerId, BudgetCategoryType.Income);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+            var budgetPlan = await dbContext.BudgetPlans.SingleAsync();
+            var category = await dbContext.BudgetCategories.SingleAsync(
+                category => category.Id == new BudgetCategoryId(categoryId));
+            budgetPlan.AddPlannedIncome(
+                new PlannedIncomeId(Guid.NewGuid()),
+                category,
+                "Salary",
+                new Money(5000m, Currency.PLN),
+                new DateOnly(2026, 7, 10));
+            await dbContext.SaveChangesAsync();
+        }
+
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.GetAsync("/api/v1/reporting/budget-balances/2026/7");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<BudgetBalanceResponse>();
+        Assert.NotNull(body);
+        Assert.Equal(2026, body.Year);
+        Assert.Equal(7, body.Month);
+        Assert.Null(body.BudgetId);
+        Assert.Null(body.BudgetStatus);
+        Assert.Equal(5000m, body.PlannedIncome);
+        Assert.Equal(0m, body.ActualIncome);
+        Assert.Equal(-5000m, body.IncomeDifference);
+    }
+
+    [Fact]
+    public async Task GetBudgetBalanceByPeriod_WithMissingPlan_ReturnsNotFound()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.GetAsync("/api/v1/reporting/budget-balances/2026/7");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetBudgetBalanceByPeriod_WithInvalidMonth_ReturnsBadRequest()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory();
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.GetAsync("/api/v1/reporting/budget-balances/2026/13");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCurrentBudgetBalance_UsesServerCurrentPeriod()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory(
+            new FixedTimeProvider(new DateTimeOffset(2026, 8, 15, 12, 0, 0, TimeSpan.Zero)));
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        await factory.SeedBudgetPlanAsync(ownerId, year: 2026, month: 8);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.GetAsync("/api/v1/reporting/budget-balances/current");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<BudgetBalanceResponse>();
+        Assert.NotNull(body);
+        Assert.Equal(2026, body.Year);
+        Assert.Equal(8, body.Month);
+    }
+
+    [Fact]
+    public async Task GetBudgetBalanceHistory_ReturnsOldPeriodsSortedDescending()
+    {
+        var ownerId = Guid.NewGuid();
+        using var factory = new HomeBudgetApiFactory(
+            new FixedTimeProvider(new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero)));
+        await factory.SeedUserAccountAsync("known-account", ownerId);
+        await factory.SeedBudgetPlanAsync(ownerId, year: 2026, month: 5);
+        await factory.SeedBudgetPlanAsync(ownerId, year: 2026, month: 6);
+        await factory.SeedBudgetPlanAsync(ownerId, year: 2026, month: 7);
+        await factory.SeedBudgetPlanAsync(ownerId, year: 2026, month: 8);
+        var client = factory.CreateAuthenticatedClient("known-account");
+
+        var response = await client.GetAsync("/api/v1/reporting/budget-balances/history?year=2026&limit=2");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<BudgetBalanceListResponse>();
+        Assert.NotNull(body);
+        Assert.Collection(
+            body.Items,
+            first =>
+            {
+                Assert.Equal(2026, first.Year);
+                Assert.Equal(6, first.Month);
+            },
+            second =>
+            {
+                Assert.Equal(2026, second.Year);
+                Assert.Equal(5, second.Month);
+            });
+    }
+
+    [Fact]
     public async Task AddIncome_WithMissingBudget_ReturnsNotFound()
     {
         var ownerId = Guid.NewGuid();
@@ -648,9 +769,12 @@ public sealed class PlanningEndpointsTests
     {
         private readonly SqliteConnection _connection = new("Data Source=:memory:");
         private readonly Dictionary<string, string?> _previousEnvironmentVariables = [];
+        private readonly TimeProvider _timeProvider;
 
-        public HomeBudgetApiFactory()
+        public HomeBudgetApiFactory(TimeProvider? timeProvider = null)
         {
+            _timeProvider = timeProvider ?? TimeProvider.System;
+
             SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
             SetEnvironmentVariable("ConnectionStrings__HomeBudget", "Host=localhost;Database=homebudget_tests;Username=test;Password=test");
             SetEnvironmentVariable("Authentication__Authority", TestAuthenticationHandler.Issuer);
@@ -765,7 +889,9 @@ public sealed class PlanningEndpointsTests
                 services.RemoveAll<IDbContextOptionsConfiguration<HomeBudgetDbContext>>();
                 services.RemoveAll<HomeBudgetDbContext>();
                 services.RemoveAll<IDatabaseProvider>();
+                services.RemoveAll<TimeProvider>();
                 services.AddDbContext<HomeBudgetDbContext>(options => options.UseSqlite(_connection));
+                services.AddSingleton(_timeProvider);
 
                 services.AddAuthentication(options =>
                 {
@@ -846,5 +972,19 @@ public sealed class PlanningEndpointsTests
 
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _now;
+
+        public FixedTimeProvider(DateTimeOffset now)
+        {
+            _now = now;
+        }
+
+        public override DateTimeOffset GetUtcNow() => _now.ToUniversalTime();
+
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
     }
 }

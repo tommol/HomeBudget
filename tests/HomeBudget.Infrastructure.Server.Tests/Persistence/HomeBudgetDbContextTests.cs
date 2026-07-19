@@ -1,6 +1,7 @@
 using HomeBudget.Application.Abstractions;
 using HomeBudget.Application.Execution;
 using HomeBudget.Application.Planning;
+using HomeBudget.Application.Reporting;
 using HomeBudget.Domain.Execution;
 using HomeBudget.Domain.Kernel;
 using HomeBudget.Domain.Planning;
@@ -206,6 +207,230 @@ public sealed class HomeBudgetDbContextTests
         Assert.Equal(BudgetStatus.Active, budget.Status);
     }
 
+    [Fact]
+    public async Task BudgetBalanceReadRepository_ReturnsFullBalance_WhenPlanAndBudgetExist()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var serviceProvider = CreateServiceProvider(connection, _ => { });
+
+        using var scope = serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        var period = new BudgetPeriod(2026, 7);
+        var budgetPlan = CreateBudgetPlan(ownerId, period);
+        var incomeCategory = CreateCategory(ownerId, BudgetCategoryType.Income);
+        var expenseCategory = CreateCategory(ownerId, BudgetCategoryType.Expense);
+        var savingCategory = CreateCategory(ownerId, BudgetCategoryType.Saving);
+        budgetPlan.AddPlannedIncome(
+            new PlannedIncomeId(Guid.NewGuid()),
+            incomeCategory,
+            "Salary",
+            new Money(5000m, Currency.PLN),
+            new DateOnly(2026, 7, 10));
+        budgetPlan.AddExpenseCategoryAllocation(
+            new CategoryAllocationId(Guid.NewGuid()),
+            expenseCategory,
+            new Money(3000m, Currency.PLN),
+            CategoryAllocationFlexibility.Fixed);
+        budgetPlan.AddSavingContribution(
+            new SavingContributionId(Guid.NewGuid()),
+            savingCategory,
+            new Money(500m, Currency.PLN));
+
+        var budget = new Budget(
+            new BudgetId(Guid.NewGuid()),
+            ownerId,
+            period,
+            Currency.PLN,
+            budgetPlan.Id);
+        budget.AddIncome(
+            new IncomeId(Guid.NewGuid()),
+            incomeCategory,
+            "Salary",
+            new Money(5200m, Currency.PLN),
+            new DateOnly(2026, 7, 10));
+        budget.AddExpense(
+            new ExpenseId(Guid.NewGuid()),
+            expenseCategory,
+            "Rent",
+            new Money(2900m, Currency.PLN),
+            new DateOnly(2026, 7, 11));
+        budget.AddSaving(
+            new SavingId(Guid.NewGuid()),
+            savingCategory,
+            "Emergency fund",
+            new Money(600m, Currency.PLN),
+            new DateOnly(2026, 7, 12));
+
+        dbContext.BudgetCategories.AddRange(incomeCategory, expenseCategory, savingCategory);
+        dbContext.BudgetPlans.Add(budgetPlan);
+        dbContext.Budgets.Add(budget);
+        await dbContext.SaveChangesAsync();
+
+        var repository = scope.ServiceProvider.GetRequiredService<IBudgetBalanceReadRepository>();
+
+        var balance = await repository.GetByOwnerIdAndPeriodAsync(ownerId, period);
+
+        Assert.NotNull(balance);
+        Assert.Equal(2026, balance.Year);
+        Assert.Equal(7, balance.Month);
+        Assert.Equal(budgetPlan.Id.Value, balance.BudgetPlanId);
+        Assert.Equal(budget.Id.Value, balance.BudgetId);
+        Assert.Equal("PLN", balance.CurrencyCode);
+        Assert.Equal("Draft", balance.BudgetPlanStatus);
+        Assert.Equal("Active", balance.BudgetStatus);
+        Assert.Equal(5000m, balance.PlannedIncome);
+        Assert.Equal(5200m, balance.ActualIncome);
+        Assert.Equal(200m, balance.IncomeDifference);
+        Assert.Equal(3000m, balance.PlannedExpenses);
+        Assert.Equal(2900m, balance.ActualExpenses);
+        Assert.Equal(-100m, balance.ExpenseDifference);
+        Assert.Equal(500m, balance.PlannedSavings);
+        Assert.Equal(600m, balance.ActualSavings);
+        Assert.Equal(100m, balance.SavingsDifference);
+        Assert.Equal(1500m, balance.PlannedResult);
+        Assert.Equal(1700m, balance.ActualResult);
+        Assert.Equal(200m, balance.ResultDifference);
+    }
+
+    [Fact]
+    public async Task BudgetBalanceReadRepository_ReturnsPlanOnlyBalance_WhenBudgetDoesNotExist()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var serviceProvider = CreateServiceProvider(connection, _ => { });
+
+        using var scope = serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        var period = new BudgetPeriod(2026, 7);
+        var budgetPlan = CreateBudgetPlan(ownerId, period);
+        var incomeCategory = CreateCategory(ownerId, BudgetCategoryType.Income);
+        budgetPlan.AddPlannedIncome(
+            new PlannedIncomeId(Guid.NewGuid()),
+            incomeCategory,
+            "Salary",
+            new Money(5000m, Currency.PLN),
+            new DateOnly(2026, 7, 10));
+
+        dbContext.BudgetCategories.Add(incomeCategory);
+        dbContext.BudgetPlans.Add(budgetPlan);
+        await dbContext.SaveChangesAsync();
+
+        var repository = scope.ServiceProvider.GetRequiredService<IBudgetBalanceReadRepository>();
+
+        var balance = await repository.GetByOwnerIdAndPeriodAsync(ownerId, period);
+
+        Assert.NotNull(balance);
+        Assert.Equal(budgetPlan.Id.Value, balance.BudgetPlanId);
+        Assert.Null(balance.BudgetId);
+        Assert.Null(balance.BudgetStatus);
+        Assert.Equal(5000m, balance.PlannedIncome);
+        Assert.Equal(0m, balance.ActualIncome);
+        Assert.Equal(-5000m, balance.IncomeDifference);
+        Assert.Equal(5000m, balance.PlannedResult);
+        Assert.Equal(0m, balance.ActualResult);
+        Assert.Equal(-5000m, balance.ResultDifference);
+    }
+
+    [Fact]
+    public async Task BudgetBalanceReadRepository_ReturnsHistoryBeforeCurrentPeriod()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var serviceProvider = CreateServiceProvider(connection, _ => { });
+
+        using var scope = serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<HomeBudgetDbContext>();
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        dbContext.BudgetPlans.AddRange(
+            CreateBudgetPlan(ownerId, new BudgetPeriod(2026, 5)),
+            CreateBudgetPlan(ownerId, new BudgetPeriod(2026, 6)),
+            CreateBudgetPlan(ownerId, new BudgetPeriod(2026, 7)),
+            CreateBudgetPlan(ownerId, new BudgetPeriod(2026, 8)));
+        await dbContext.SaveChangesAsync();
+
+        var repository = scope.ServiceProvider.GetRequiredService<IBudgetBalanceReadRepository>();
+
+        var history = await repository.GetHistoryAsync(
+            ownerId,
+            new BudgetPeriod(2026, 7),
+            year: 2026,
+            limit: 2);
+
+        Assert.Collection(
+            history,
+            first =>
+            {
+                Assert.Equal(2026, first.Year);
+                Assert.Equal(6, first.Month);
+            },
+            second =>
+            {
+                Assert.Equal(2026, second.Year);
+                Assert.Equal(5, second.Month);
+            });
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_RejectsDuplicateBudgetPlansForOwnerAndPeriod()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var dbContext = new HomeBudgetDbContext(
+            CreateOptions(connection),
+            new RecordingDomainEventDispatcher());
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        dbContext.BudgetPlans.AddRange(
+            CreateBudgetPlan(ownerId, new BudgetPeriod(2026, 7)),
+            CreateBudgetPlan(ownerId, new BudgetPeriod(2026, 7)));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_RejectsDuplicateBudgetsForOwnerAndPeriod()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        await using var dbContext = new HomeBudgetDbContext(
+            CreateOptions(connection),
+            new RecordingDomainEventDispatcher());
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var ownerId = new OwnerId(Guid.NewGuid());
+        var period = new BudgetPeriod(2026, 7);
+        dbContext.Budgets.AddRange(
+            new Budget(
+                new BudgetId(Guid.NewGuid()),
+                ownerId,
+                period,
+                Currency.PLN,
+                new BudgetPlanId(Guid.NewGuid())),
+            new Budget(
+                new BudgetId(Guid.NewGuid()),
+                ownerId,
+                period,
+                Currency.PLN,
+                new BudgetPlanId(Guid.NewGuid())));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+    }
+
     private static DbContextOptions<HomeBudgetDbContext> CreateOptions(SqliteConnection connection)
         => new DbContextOptionsBuilder<HomeBudgetDbContext>()
             .UseSqlite(connection)
@@ -223,11 +448,11 @@ public sealed class HomeBudgetDbContextTests
         return services.BuildServiceProvider(validateScopes: true);
     }
 
-    private static BudgetPlan CreateBudgetPlan(OwnerId ownerId)
+    private static BudgetPlan CreateBudgetPlan(OwnerId ownerId, BudgetPeriod? period = null)
         => new(
             new BudgetPlanId(Guid.NewGuid()),
             ownerId,
-            new BudgetPeriod(2026, 7),
+            period ?? new BudgetPeriod(2026, 7),
             Currency.PLN);
 
     private static BudgetCategory CreateCategory(OwnerId ownerId, BudgetCategoryType type)

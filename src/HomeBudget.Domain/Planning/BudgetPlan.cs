@@ -11,6 +11,8 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
     private readonly List<PlannedIncome> _plannedIncomes = [];
     private readonly List<CategoryAllocation> _expenseCategoryAllocations = [];
     private readonly List<SavingContribution> _savingContributions = [];
+    private int _periodYear = 1;
+    private int _periodMonth = 1;
 
     private BudgetPlan()
     {
@@ -19,7 +21,6 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         TotalAllocatedExpenses = null!;
         TotalSavingContributions = null!;
         PlannedFinancialResult = null!;
-        Period = null!;
         DefaultCurrency = null!;
     }
 
@@ -42,7 +43,7 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         ArgumentNullException.ThrowIfNull(defaultCurrency);
 
         OwnerId = ownerId;
-        Period = period;
+        SetPeriod(period);
         DefaultCurrency = defaultCurrency;
         Status = BudgetPlanStatus.Draft;
         BudgetFitRisk = BudgetFitRisk.Balanced;
@@ -90,7 +91,7 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
     /// <summary>
     /// Gets the period covered by the budget plan.
     /// </summary>
-    public BudgetPeriod Period { get; private set; }
+    public BudgetPeriod Period => new(_periodYear, _periodMonth);
 
     /// <summary>
     /// Gets the default currency used by the budget plan.
@@ -456,6 +457,14 @@ public sealed class BudgetPlan : AggregateRoot<BudgetPlanId>
         {
             throw new InvalidOperationException("Only draft budget plans can be modified.");
         }
+    }
+
+    private void SetPeriod(BudgetPeriod period)
+    {
+        ArgumentNullException.ThrowIfNull(period);
+
+        _periodYear = period.Year;
+        _periodMonth = period.Month;
     }
 
     private void EnsureDateIsInsidePeriod(DateOnly expectedDate)

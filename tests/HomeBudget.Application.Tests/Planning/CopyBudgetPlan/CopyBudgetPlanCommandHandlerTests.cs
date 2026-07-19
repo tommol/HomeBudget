@@ -105,4 +105,19 @@ public sealed class CopyBudgetPlanCommandHandlerTests
         Assert.Equal(sourceBudgetPlanId, exception.BudgetPlanId);
         Assert.Empty(repository.AddedBudgetPlans);
     }
+
+    [Fact]
+    public async Task HandleAsync_Throws_WhenTargetPeriodAlreadyHasBudgetPlan()
+    {
+        var ownerId = new OwnerId(Guid.NewGuid());
+        var sourceBudgetPlan = CreateBudgetPlanAggregate(new BudgetPeriod(2026, 7), ownerId);
+        var existingTargetBudgetPlan = CreateBudgetPlanAggregate(new BudgetPeriod(2026, 8), ownerId);
+        var repository = new FakeBudgetPlanRepository(sourceBudgetPlan, existingTargetBudgetPlan);
+        var handler = new CopyBudgetPlanCommandHandler(repository);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.HandleAsync(
+            new CopyBudgetPlanCommand(ownerId.Value, sourceBudgetPlan.Id.Value, 2026, 8)));
+
+        Assert.Empty(repository.AddedBudgetPlans);
+    }
 }

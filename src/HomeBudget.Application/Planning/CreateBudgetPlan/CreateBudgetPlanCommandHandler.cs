@@ -34,6 +34,11 @@ public sealed class CreateBudgetPlanCommandHandler : ICommandHandler<CreateBudge
         var period = new BudgetPeriod(command.Year, command.Month);
         var defaultCurrency = new Currency(command.DefaultCurrencyCode);
 
+        if (await _budgetPlanRepository.ExistsByOwnerIdAndPeriodAsync(ownerId, period, cancellationToken))
+        {
+            throw new InvalidOperationException("Budget plan already exists for this owner and period.");
+        }
+
         var budgetPlan = new BudgetPlan(
             budgetPlanId,
             ownerId,

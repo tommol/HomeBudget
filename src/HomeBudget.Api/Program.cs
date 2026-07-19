@@ -2,6 +2,7 @@ using Asp.Versioning;
 using HomeBudget.Api.Auth;
 using HomeBudget.Api.Endpoints.Execution;
 using HomeBudget.Api.Endpoints.Planning;
+using HomeBudget.Api.Endpoints.Reporting;
 using HomeBudget.Api.OpenApi;
 using HomeBudget.Application.Abstractions;
 using HomeBudget.Application.Execution.AddExpense;
@@ -35,6 +36,10 @@ using HomeBudget.Application.Planning.CopyBudgetPlan;
 using HomeBudget.Application.Planning.CreateBudgetPlan;
 using HomeBudget.Application.Planning.RemoveExpenseCategoryAllocation;
 using HomeBudget.Application.Planning.RemoveSavingContribution;
+using HomeBudget.Application.Reporting.GetBudgetBalance;
+using HomeBudget.Application.Reporting.GetBudgetBalanceHistory;
+using HomeBudget.Application.Reporting.GetCurrentBudgetBalance;
+using HomeBudget.Contracts.Reporting;
 using HomeBudget.Infrastructure.Server;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Scalar.AspNetCore;
@@ -73,6 +78,10 @@ builder.Services.AddScoped<ICommandHandler<CopyBudgetPlanCommand, Guid>, CopyBud
 builder.Services.AddScoped<ICommandHandler<CreateBudgetPlanCommand, Guid>, CreateBudgetPlanCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<RemoveExpenseCategoryAllocationCommand>, RemoveExpenseCategoryAllocationCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<RemoveSavingContributionCommand>, RemoveSavingContributionCommandHandler>();
+builder.Services.AddScoped<IQueryHandler<GetBudgetBalanceQuery, BudgetBalanceResponse>, GetBudgetBalanceQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetBudgetBalanceHistoryQuery, BudgetBalanceListResponse>, GetBudgetBalanceHistoryQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetCurrentBudgetBalanceQuery, BudgetBalanceResponse>, GetCurrentBudgetBalanceQueryHandler>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddScoped<CurrentOwnerContext>();
 builder.Services.AddScoped<ICurrentOwner>(serviceProvider => serviceProvider.GetRequiredService<CurrentOwnerContext>());
@@ -136,6 +145,7 @@ var api = app.MapGroup("/api/v{version:apiVersion}")
 
 api.MapPlanningEndpoints();
 api.MapExecutionEndpoints();
+api.MapReportingEndpoints();
 
 app.Run();
 

@@ -68,6 +68,18 @@ internal sealed class FakeBudgetPlanRepository : IBudgetPlanRepository
                 && budgetPlan.OwnerId.Equals(ownerId)));
     }
 
+    public Task<bool> ExistsByOwnerIdAndPeriodAsync(
+        OwnerId ownerId,
+        BudgetPeriod period,
+        CancellationToken cancellationToken = default)
+    {
+        GetByIdCancellationTokens.Add(cancellationToken);
+
+        return Task.FromResult(_budgetPlans.Any(
+            budgetPlan => budgetPlan.OwnerId.Equals(ownerId)
+                && budgetPlan.Period.Equals(period)));
+    }
+
     public Task AddAsync(BudgetPlan budgetPlan, CancellationToken cancellationToken = default)
     {
         _budgetPlans.Add(budgetPlan);

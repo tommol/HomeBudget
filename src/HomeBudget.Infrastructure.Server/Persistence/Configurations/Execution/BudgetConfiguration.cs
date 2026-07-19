@@ -41,17 +41,13 @@ internal sealed class BudgetConfiguration : IEntityTypeConfiguration<Budget>
                 code => new Currency(code))
             .HasMaxLength(3);
 
-        builder.OwnsOne(budget => budget.Period, period =>
-        {
-            period.Property(value => value.Year)
-                .HasColumnName("PeriodYear");
+        builder.Property<int>("_periodYear")
+            .HasColumnName("PeriodYear");
 
-            period.Property(value => value.Month)
-                .HasColumnName("PeriodMonth");
+        builder.Property<int>("_periodMonth")
+            .HasColumnName("PeriodMonth");
 
-            period.Ignore(value => value.StartDate);
-            period.Ignore(value => value.EndDate);
-        });
+        builder.Ignore(budget => budget.Period);
 
         builder.OwnsOne(budget => budget.TotalIncome, money => money.ConfigureMoney("TotalIncome"));
         builder.OwnsOne(budget => budget.TotalExpenses, money => money.ConfigureMoney("TotalExpenses"));
@@ -59,6 +55,9 @@ internal sealed class BudgetConfiguration : IEntityTypeConfiguration<Budget>
         builder.OwnsOne(budget => budget.ActualFinancialResult, money => money.ConfigureMoney("ActualFinancialResult"));
 
         builder.HasIndex(budget => budget.SourceBudgetPlanId)
+            .IsUnique();
+
+        builder.HasIndex("OwnerId", "_periodYear", "_periodMonth")
             .IsUnique();
 
         builder.OwnsMany(budget => budget.Incomes, incomes =>
@@ -177,9 +176,6 @@ internal sealed class BudgetConfiguration : IEntityTypeConfiguration<Budget>
             savings.OwnsOne(saving => saving.Amount, money => money.ConfigureMoney("Amount"));
             savings.OwnsOne(saving => saving.ConvertedAmount, money => money.ConfigureMoney("ConvertedAmount"));
         });
-
-        builder.Navigation(budget => budget.Period)
-            .IsRequired();
 
         builder.Navigation(budget => budget.TotalIncome)
             .IsRequired();

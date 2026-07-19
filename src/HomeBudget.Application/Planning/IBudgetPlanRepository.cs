@@ -29,6 +29,18 @@ public interface IBudgetPlanRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Checks whether a budget plan exists for the owner and period.
+    /// </summary>
+    /// <param name="ownerId">The budget plan owner identifier.</param>
+    /// <param name="period">The budget period.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><c>true</c> when a matching budget plan exists; otherwise, <c>false</c>.</returns>
+    Task<bool> ExistsByOwnerIdAndPeriodAsync(
+        OwnerId ownerId,
+        BudgetPeriod period,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds a budget plan to the repository.
     /// </summary>
     /// <param name="budgetPlan">The budget plan to add.</param>
